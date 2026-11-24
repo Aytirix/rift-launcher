@@ -13,6 +13,12 @@ portage y a changé.
 - `src/web/` : l'interface d'origine. **On n'y touche qu'au strict minimum**, et chaque
   écart se commente dans le code. Le but est de pouvoir reprendre ses futures versions
   et de proposer ce portage à TeK_Sama.
+- `src/web/portage.js` et `portage.css` : l'interface des fonctions **ajoutées** par le
+  portage (catalogue, émulateurs, lanceur, versions, Steam). C'est là qu'on les fait
+  évoluer ; `app.js` n'a que deux crochets (`window.riftEditeur`, `window.riftApresRendu`).
+- `src/catalogue.json` : chaque entrée doit être **vérifiée sur la vraie release** (nom du
+  programme dans l'archive, par système). Un portage qui ne s'installe pas seul a une
+  `page` qui dit pourquoi, jamais un faux `programme`.
 - `src/main/` : le moteur, qui remplace `RiftLauncher.ps1`. Les noms de commandes, le
   format de `library.json` et les dossiers de données sont **les mêmes** que la version
   PowerShell : un utilisateur Windows doit pouvoir passer de l'une à l'autre sans rien
@@ -61,5 +67,10 @@ passait en ne comptant aucun temps de jeu.
   `XInputGetStateEx` (ordinal 100) et `SetForegroundWindow`.
 - La lecture des manettes Linux (`src/main/manettes-linux.js`) n'a été testée que sur
   des événements simulés, pas sur une vraie manette.
+- La limite GitHub sans compte (60 appels/heure, partagée par la box) : les essais réels
+  la consomment vite. Le cache ETag (`cache-github.json`) évite d'en reconsommer.
+- « Ajouter à Steam » n'a été testé que sur des fichiers `shortcuts.vdf` construits par
+  les tests, jamais dans un vrai Steam ; umu-launcher et Wine n'existent pas sur cette
+  machine (lanceurs testés avec des faux).
 - L'ID Discord intégré est vide (`src/main/discord.js`) : celui de TeK_Sama n'est pas
   repris sans son accord.

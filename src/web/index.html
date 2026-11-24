@@ -6,6 +6,7 @@
   <title>Rift Launcher</title>
   <link rel="icon" href="logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="portage.css">
 </head>
 <body>
   <!-- Intro : 1) made by TeK_Sama  2) la faille s'ouvre sur « Rift Launcher » -->
@@ -62,6 +63,7 @@
       <button class="icon-btn" id="big-btn" title="Mode Big Picture (plein écran, pour la manette)" aria-label="Mode Big Picture" aria-pressed="false"></button>
       <button class="icon-btn" id="mute" title="Couper le son" aria-label="Couper le son"></button>
       <button class="icon-btn" id="open-settings" title="Réglages" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
+      <button class="btn btn-primary" id="catalog-open">Installer un portage</button>
       <button class="btn btn-ghost" id="add">+ Ajouter un jeu</button>
     </div>
   </header>
@@ -90,6 +92,11 @@
           <input name="exePath" placeholder="…/jeu.AppImage ou C:\…\jeu.exe">
           <button type="button" class="btn btn-small" data-pick="exePath">Parcourir</button>
         </span>
+      </label>
+
+      <!-- Portage Windows/Linux : émulateur qui lance ce jeu (le fichier est alors une ROM, un .xci…). -->
+      <label id="emulator-row" hidden>Lancé par
+        <select name="emulator" id="emulator-select"><option value="">Le fichier lui-même</option></select>
       </label>
 
       <label>Dossier de sauvegarde du jeu <small>(pour le bouton Sauvegarder)</small>
@@ -124,6 +131,10 @@
         </label>
         <label>Variables d'environnement <small>(une par ligne, CLE=valeur)</small>
           <textarea name="env" rows="3" placeholder="RBREW_CONSOLE_LANGUAGE=2"></textarea>
+        </label>
+        <!-- Portage Windows/Linux : avec quoi lancer un jeu Windows (.exe) sous Linux. -->
+        <label id="runner-row" hidden>Lanceur d'un jeu Windows (.exe) sous Linux
+          <select name="runner" id="runner-select"><option value="">Automatique</option></select>
         </label>
       </details>
         </div>
@@ -161,6 +172,8 @@
       </label>
         </div>
       </div>
+
+      <div class="rl-extra" id="editor-extra"></div>
 
       <p class="form-error" id="form-error" hidden></p>
 
@@ -230,6 +243,22 @@
     </div>
   </dialog>
 
+  <!-- Portage Windows/Linux : catalogue « Installer un portage ». -->
+  <dialog id="catalog" class="mods-dialog rl-catalog">
+    <div class="mods-wrap">
+      <div class="mods-head">
+        <div>
+          <h2>Installer un portage</h2>
+          <p class="mods-path"><span>Installés dans :</span> <span id="catalog-folder" data-i18n="no"></span>
+            <button class="btn btn-small btn-ghost" id="catalog-folder-change">Changer</button></p>
+        </div>
+        <button class="icon-btn" id="catalog-close" title="Fermer" aria-label="Fermer">✕</button>
+      </div>
+      <ul class="mods-list rl-catalog-list" id="catalog-list"></ul>
+      <p class="mods-hint">Rift Launcher télécharge la dernière version depuis la page GitHub du portage. Aucun jeu ni ROM n'est fourni : chaque portage te demande tes propres fichiers.</p>
+    </div>
+  </dialog>
+
   <!-- Réglages : une catégorie à la fois (onglets à gauche, LB / RB à la manette) -->
   <dialog id="settings">
     <div class="set-wrap">
@@ -239,6 +268,7 @@
         <button class="set-tab" data-tab="sons"><span class="set-ico">♪</span>Sons</button>
         <button class="set-tab" data-tab="manette"><span class="set-ico">◎</span>Manette</button>
         <button class="set-tab" data-tab="jaquettes"><span class="set-ico">▣</span>Jaquettes</button>
+        <button class="set-tab" data-tab="emulateurs"><span class="set-ico">▶</span>Émulateurs</button>
         <button class="set-tab" data-tab="discord"><span class="set-ico">●</span>Discord</button>
         <button class="set-tab" data-tab="maj"><span class="set-ico">↻</span>Mises à jour</button>
         <button class="set-tab" data-tab="journal"><span class="set-ico">≡</span>Journal</button>
@@ -320,6 +350,24 @@
           </div>
         </section>
 
+        <!-- Portage Windows/Linux : émulateurs déclarés une fois. -->
+        <section class="set-panel" data-tab="emulateurs" hidden>
+          <p data-i18n="html">Déclare un émulateur une seule fois, puis choisis-le dans « <b>Lancé par</b> » des jeux qu'il fait tourner : le fichier du jeu devient la ROM ou le <code>.xci</code>.</p>
+          <ul class="rl-emus" id="emu-list"></ul>
+          <div class="set-sub rl-emu-form" id="emu-form">
+            <input id="emu-name" placeholder="Nom (ex. Eglantine)" autocomplete="off">
+            <div class="row">
+              <input id="emu-exe" placeholder="Programme de l'émulateur" autocomplete="off">
+              <button class="btn btn-small" id="emu-pick">Parcourir</button>
+            </div>
+            <input id="emu-args" placeholder='Arguments, {jeu} = fichier du jeu (ex. -f -g "{jeu}")' autocomplete="off">
+            <div class="media-btns">
+              <button class="btn btn-small btn-primary" id="emu-save">Ajouter l'émulateur</button>
+              <button class="btn btn-small btn-ghost" id="emu-cancel" hidden>Annuler</button>
+            </div>
+          </div>
+        </section>
+
         <section class="set-panel" data-tab="discord" hidden>
           <p data-i18n="html">Ton profil affiche « <b>Joue à Rift Launcher</b> » : « Navigue dans les menus », puis le jeu lancé « via Rift Launcher » avec le temps de jeu.</p>
           <div class="pref-toggle">
@@ -344,6 +392,10 @@
           <div class="pref-toggle">
             <span>Surveiller les nouvelles versions des portages <small>(jeux avec une page GitHub)</small></span>
             <button class="switch" role="switch" id="pref-recompCheck" aria-label="Surveiller les portages"><span class="knob"></span></button>
+          </div>
+          <div class="pref-toggle">
+            <span>Installer seul les nouvelles versions des portages <small>(jamais pendant une partie)</small></span>
+            <button class="switch" role="switch" id="pref-recompAuto" aria-label="Installer seul les nouvelles versions"><span class="knob"></span></button>
           </div>
           <p class="set-small">Compare la version indiquée dans les paramètres du jeu à la dernière sur GitHub, au démarrage puis toutes les 6 heures.</p>
           <div class="media-btns">
@@ -382,5 +434,6 @@
   <script src="i18n.js"></script>
   <script src="i18n-dict.js"></script>
   <script src="app.js"></script>
+  <script src="portage.js"></script>
 </body>
 </html>

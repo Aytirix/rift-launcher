@@ -24,6 +24,26 @@ Dans la [dernière version](https://github.com/Aytirix/rift-launcher/releases/la
 | Linux (toutes distributions) | `RiftLauncher-x.y.z-x86_64.AppImage` | `chmod +x RiftLauncher-*.AppImage` puis lance-le. Mise à jour automatique. |
 | Debian, Ubuntu, Mint… | `RiftLauncher-x.y.z-amd64.deb` | `sudo apt install ./RiftLauncher-*.deb` |
 
+## Installer un portage en un clic
+
+**Installer un portage** (en haut) ouvre un catalogue de portages et d'émulateurs connus :
+Zelda64Recomp, Ship of Harkinian, 2 Ship 2 Harkinian, SpaghettiKart, Starship, Eglantine…
+Un clic télécharge la dernière version dans ton dossier de jeux (`~/Jeux` par défaut,
+modifiable) et crée la fiche toute réglée. Chaque portage dit ce que **tu** dois fournir
+(ta ROM, les fichiers de ton jeu) : rien n'est fourni par Rift Launcher.
+
+Les portages qui ne s'installent pas tout seuls (TotK recomp, qui se construit avec son
+propre assistant ; Unleashed sous Linux, publié en Flatpak) ouvrent leur page à la place.
+
+## Mises à jour des portages
+
+Quand un portage publie une nouvelle version, le bandeau du jeu propose **Mettre à jour** :
+le bon fichier est choisi (système, processeur, AppImage ou archive, variante « pgo »),
+son empreinte SHA-256 vérifiée, tes sauvegardes copiées, et l'ancienne version gardée.
+**Revenir à la v…** (paramètres du jeu) la remet si la nouvelle pose problème. Dans
+Réglages → Mises à jour, **Installer seul les nouvelles versions** le fait sans demander,
+jamais pendant une partie.
+
 ## Ajouter un jeu
 
 **+ Ajouter un jeu**, puis le fichier du jeu :
@@ -34,17 +54,23 @@ Dans la [dernière version](https://github.com/Aytirix/rift-launcher/releases/la
   [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher) (Proton) s'il
   est installé, sinon par **Wine**.
 
+Sous Linux, **Lanceur d'un jeu Windows** (options avancées du jeu) choisit, jeu par jeu,
+entre Proton GE (umu-launcher), une version de Proton déjà installée (Steam, GE) ou Wine.
 Les variables d'environnement (une par ligne, `CLE=valeur`) servent par exemple à
-`WINEPREFIX`, `PROTONPATH`, `DXVK_HUD` ou `MANGOHUD=1`.
+`WINEPREFIX`, `DXVK_HUD` ou `MANGOHUD=1`.
 
-### Exemple : un émulateur (Eglantine, Switch 2)
+### Les émulateurs (Eglantine, Switch 2…)
 
-| Champ | Valeur |
-|---|---|
-| Fichier du jeu | `…/eglantine-linux-x86_64.AppImage` (ou `eglantine.exe` sous Windows) |
-| Arguments | `-f -g "/chemin/vers/le/jeu.xci"` |
+Déclare l'émulateur une fois dans **Réglages → Émulateurs** (ou installe-le depuis le
+catalogue) : programme, et arguments où `{jeu}` est remplacé par le fichier du jeu, par
+exemple `-f -g "{jeu}"`. Chaque jeu n'est ensuite qu'un fichier (`.xci`, `.z64`…) avec
+**Lancé par : Eglantine**.
 
-`-f` lance en plein écran, `-g` donne le jeu à charger. Une entrée par jeu.
+### Jouer depuis Steam (Big Picture, Steam Deck)
+
+**Ajouter à Steam** (paramètres du jeu) crée un raccourci non-Steam qui lance le jeu par
+Rift Launcher, avec la jaquette comme affiche : le temps de jeu et le statut Discord
+continuent de marcher. Ferme Steam avant, il réécrit ses raccourcis en quittant.
 
 ## Ce qui marche, et où
 
@@ -57,6 +83,9 @@ Les variables d'environnement (une par ligne, `CLE=valeur`) servent par exemple 
 | Bouton Home et bouton capture **en plein jeu** | ⏳ pas encore | ✅ Xbox, PlayStation, Switch Pro |
 | Capture d'écran | ✅ | ✅ (sous Wayland : `grim`, `gnome-screenshot` ou `spectacle`) |
 | Statut Discord | ✅ | ✅ (Discord normal, Flatpak ou Snap) |
+| Catalogue, mise à jour et retour de version des portages | ✅ | ✅ |
+| Émulateurs, « Ajouter à Steam » | ✅ | ✅ |
+| Choix Proton / Wine par jeu | — | ✅ |
 | Mise à jour automatique de Rift Launcher | ✅ | ✅ AppImage ; .deb prévue, pas encore éprouvée (sinon la page de la version s'ouvre) |
 
 Pour Windows, le bouton Home en plein jeu demandait du code natif (XInput, HID) que la
@@ -107,6 +136,8 @@ npm run dist:win                   # installeur Windows (sur Windows)
 | Dossier | Contenu |
 |---|---|
 | `src/web/` | L'interface de TeK_Sama (HTML, CSS, JS, traductions), modifiée au strict minimum |
+| `src/web/portage.js`, `portage.css` | L'interface des fonctions propres au portage (catalogue, émulateurs, Steam…) |
+| `src/catalogue.json` | Les portages du catalogue, relevés sur leurs vraies releases |
 | `src/main/` | Le moteur : bibliothèque, lancement des jeux, mods, Discord, manettes… |
 | `src/preload.js` | Le seul pont entre l'interface et le moteur |
 | `test/` | Tests unitaires |

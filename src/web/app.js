@@ -9,6 +9,7 @@ function fix(data) {
   return {
     games: [].concat(data.games || []), running: [].concat(data.running || []),
     version: data.version || '', update: data.update || null, capture: data.capture || null,
+    autoUpdates: data.autoUpdates || null,   // portage Windows/Linux : mises à jour automatiques faites
   };
 }
 
@@ -874,12 +875,14 @@ function render() {
   announceRecomps();
   announceCapture();
   pad.paintHints();
+  if (window.riftApresRendu) window.riftApresRendu();   // portage Windows/Linux (portage.js)
 }
 
 // ---------- Édition ----------
 const dlg = document.getElementById('editor');
 const form = document.getElementById('form');
-const FIELDS = ['name', 'exePath', 'saveDir', 'modsDir', 'version', 'repoUrl', 'args', 'env', 'franchise'];
+// runner, emulator : champs du portage Windows/Linux (remplis par portage.js).
+const FIELDS = ['name', 'exePath', 'saveDir', 'modsDir', 'version', 'repoUrl', 'args', 'env', 'franchise', 'runner', 'emulator'];
 let franchiseList = [];
 
 function openEditor(game) {
@@ -895,6 +898,7 @@ function openEditor(game) {
   sfx.select();
   dlg.showModal();
   form.elements[game && !game.exePath ? 'exePath' : 'name'].focus();
+  if (window.riftEditeur) window.riftEditeur(game);   // portage Windows/Linux (portage.js)
 }
 
 form.addEventListener('click', async (e) => {
@@ -1130,7 +1134,7 @@ function paintPadLegend() {
 // ---------- Paramètres généraux ----------
 let prefsState = {};
 const PREF_SLIDERS = ['volume', 'uiVolume', 'gameVolume'];
-const PREF_TOGGLES = ['hoverSounds', 'debugLog', 'discord', 'recompCheck', 'homeToggle', 'captureButton'];
+const PREF_TOGGLES = ['hoverSounds', 'debugLog', 'discord', 'recompCheck', 'recompAuto', 'homeToggle', 'captureButton'];
 
 function paintPrefs(p) {
   prefsState = { ...p };
