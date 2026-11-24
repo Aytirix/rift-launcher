@@ -17,6 +17,8 @@ const { nomDeFichierSur } = require('./lancement');
 const { sauvegarder } = require('./sauvegardes');
 
 const VERSIONS_GARDEES = 2;
+// Dans chaque ancienne version : comment la remettre (type, programme, version).
+const FICHE = '.rift-version.json';
 
 // ---------------------------------------------------------------- choix du fichier
 const EXCLUS = /(mac|macos|osx|darwin|\.dmg$|flatpak|source|\.sha256$|\.sig$|\.asc$|debug|symbols|\.pdb$|\.blockmap$|\.ya?ml$)/;
@@ -217,12 +219,52 @@ function deplacer(source, cible) {
   }
 }
 
-function rangerAncienneVersion(etat, jeu) {
-  const dossier = path.join(etat.dossiers.donnees, 'anciennes-versions', nomDeFichierSur(jeu.name));
+function dossierAnciennesDu(etat, jeu) {
+  return path.join(etat.dossiers.donnees, 'anciennes-versions', nomDeFichierSur(jeu.name));
+}
+
+// Range la version installée (AppImage seule, ou copie du dossier du jeu) et note
+// dans sa fiche comment la remettre.
+function rangerAncienneVersion(etat, jeu, type) {
+  const dossier = dossierAnciennesDu(etat, jeu);
   let cible = path.join(dossier, nomDeFichierSur(jeu.version || 'inconnue'));
   for (let n = 2; fs.existsSync(cible); n++) cible = path.join(dossier, `${nomDeFichierSur(jeu.version || 'inconnue')}_${n}`);
   fs.mkdirSync(cible, { recursive: true });
+  if (type === 'appimage') {
+    deplacer(jeu.exePath, path.join(cible, path.basename(jeu.exePath)));
+  } else {
+    fs.cpSync(path.dirname(jeu.exePath), cible, { recursive: true, verbatimSymlinks: true });
+  }
+  const fiche = { version: jeu.version, type, exePath: jeu.exePath, date: Date.now() };
+  fs.writeFileSync(path.join(cible, FICHE), JSON.stringify(fiche, null, 2));
   return { dossier, cible };
+}
+
+// Versions gardées, de la plus récente à la plus ancienne.
+function anciennesVersions(etat, jeu) {
+  const dossier = dossierAnciennesDu(etat, jeu);
+  let noms = [];
+  try {
+    noms = fs.readdirSync(dossier);
+  } catch {
+    return [];
+  }
+  const liste = [];
+  for (const nom of noms) {
+    try {
+      const fiche = JSON.parse(fs.readFileSync(path.join(dossier, nom, FICHE), 'utf8'));
+      liste.push({
+        key: nom,
+        version: String(fiche.version ?? ''),
+        type: fiche.type,
+        exePath: String(fiche.exePath ?? ''),
+        date: Number(fiche.date) || 0,
+      });
+    } catch {
+      // dossier sans fiche (rangé à la main, ou d'avant les fiches) : pas proposé
+    }
+  }
+  return liste.sort((a, b) => b.date - a.date);
 }
 
 function nettoyerAnciennesVersions(dossier) {
@@ -332,23 +374,26 @@ async function installerPortage(etat, id, { enregistrer, arch = process.arch }) 
       if (s.ok) etat.journal('INFO', `Sauvegarde avant mise a jour : ${s.path}`);
     }
 
-    const { dossier: dossierAnciennes, cible: ancienne } = rangerAncienneVersion(etat, jeu);
     const dossierJeu = path.dirname(jeu.exePath);
+    const { dossier: dossierAnciennes, cible: ancienne } = rangerAncienneVersion(
+      etat,
+      jeu,
+      choix.type === 'appimage' ? 'appimage' : 'dossier',
+    );
     if (choix.type === 'appimage') {
       const nouveau = path.join(dossierJeu, choix.fichier.name);
-      deplacer(jeu.exePath, path.join(ancienne, path.basename(jeu.exePath)));
       deplacer(telecharge, nouveau);
       fs.chmodSync(nouveau, 0o755);
       jeu.exePath = nouveau;
     } else {
-      // Copie de la version actuelle, puis la nouvelle par-dessus.
-      fs.cpSync(dossierJeu, ancienne, { recursive: true, verbatimSymlinks: true });
+      // La version actuelle est copiée (ci-dessus), puis la nouvelle par-dessus.
       fs.cpSync(sourceDossier, dossierJeu, { recursive: true, force: true, verbatimSymlinks: true });
       const relatif = path.relative(sourceDossier, programme);
       jeu.exePath = path.join(dossierJeu, relatif);
     }
     nettoyerAnciennesVersions(dossierAnciennes);
     jeu.version = info.latest.replace(/^[vV](?=\d)/, '');
+    jeu.skipVersion = '';
     enregistrer();
     etat.journal('INFO', `Portage mis a jour : ${nomLog} | ancienne version dans ${ancienne}`);
     etat.installations.delete(id);
@@ -363,4 +408,56 @@ async function installerPortage(etat, id, { enregistrer, arch = process.arch }) 
   }
 }
 
-module.exports = { choisirFichier, extraireZip, extraireTarGz, trouverProgramme, installerPortage, typeDeFichier };
+// Remet une version gardée. La version actuelle est d'abord rangée à son tour : on
+// peut revenir dans les deux sens. La version quittée n'est plus réinstallée par la
+// mise à jour automatique (skipVersion), puisque le joueur vient de la refuser.
+function revenirVersion(etat, id, cle, { enregistrer }) {
+  const jeu = etat.jeux.find((j) => j.id === id);
+  if (!jeu) return { error: 'Jeu introuvable.' };
+  if (etat.enCours.has(id)) return { error: 'Ferme le jeu avant de changer de version.' };
+  if (etat.installations.get(id)?.enCours) return { error: 'Une mise à jour de ce jeu est en cours.' };
+  const voulue = anciennesVersions(etat, jeu).find((v) => v.key === cle);
+  if (!voulue) return { error: "Cette version n'est plus gardée." };
+  const source = path.join(dossierAnciennesDu(etat, jeu), voulue.key);
+  if (voulue.type === 'appimage' && !estFichier(path.join(source, path.basename(voulue.exePath)))) {
+    return { error: 'Le fichier de cette version a disparu.' };
+  }
+  if (!estFichier(jeu.exePath)) return { error: 'Le fichier du jeu actuel est introuvable : règle-le avant de changer de version.' };
+  try {
+    if (estDossier(jeu.saveDir)) sauvegarder(etat, id);
+    const quittee = jeu.version;
+    rangerAncienneVersion(etat, jeu, voulue.type === 'appimage' ? 'appimage' : 'dossier');
+    if (voulue.type === 'appimage') {
+      deplacer(path.join(source, path.basename(voulue.exePath)), voulue.exePath);
+      fs.chmodSync(voulue.exePath, 0o755);
+    } else {
+      fs.cpSync(source, path.dirname(voulue.exePath), {
+        recursive: true,
+        force: true,
+        verbatimSymlinks: true,
+        filter: (f) => path.basename(f) !== FICHE,
+      });
+    }
+    fs.rmSync(source, { recursive: true, force: true });
+    jeu.exePath = voulue.exePath;
+    jeu.version = voulue.version;
+    jeu.skipVersion = etat.portages.get(id)?.latest ?? quittee;
+    enregistrer();
+    etat.journal('INFO', `Retour a la version ${voulue.version} de ${jeu.name} (quittee : ${quittee})`);
+    return { ok: true, version: voulue.version };
+  } catch (err) {
+    etat.journal.erreur(`Retour de version de ${jeu.name}`, err);
+    return { error: `Changement de version impossible : ${err.message}` };
+  }
+}
+
+module.exports = {
+  revenirVersion,
+  anciennesVersions,
+  choisirFichier,
+  extraireZip,
+  extraireTarGz,
+  trouverProgramme,
+  installerPortage,
+  typeDeFichier,
+};

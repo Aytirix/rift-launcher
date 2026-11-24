@@ -7,6 +7,7 @@ const path = require('node:path');
 const { licenceDe, resoudreJaquette, resoudreSons, marqueVersion, estFichier } = require('./licences');
 const { lirePrefs, enregistrerPrefs } = require('./reglages');
 const { vuePortage } = require('./portages');
+const { anciennesVersions } = require('./maj-portages');
 
 const CHAMPS_EDITION = ['name', 'exePath', 'args', 'env', 'saveDir', 'modsDir', 'version', 'repoUrl', 'franchise'];
 
@@ -20,6 +21,7 @@ function nouveauJeu(source, garderStats) {
   jeu.cover = texte(s.cover);
   jeu.sound = texte(s.sound);
   jeu.coverRemote = texte(s.coverRemote); // adresse en ligne de la jaquette (statut Discord)
+  jeu.skipVersion = texte(s.skipVersion); // version de portage quittée : pas de réinstallation automatique
   jeu.playSeconds = 0;
   jeu.lastPlayed = null;
   jeu.sessions = 0;
@@ -167,6 +169,7 @@ function instantane(etat) {
     v.soundUrl = v.soundUrls[0] ?? '';
     v.soundSource = sons ? sons.source : '';
     v.recomp = vuePortage(etat, jeu);
+    v.previousVersions = anciennesVersions(etat, jeu).map((a) => ({ key: a.key, version: a.version }));
     v.launcherSeconds = Number(jeu.playSeconds) || 0;
     v.playSource = 'launcher';
     const propre = lireTempsDuJeu(etat, jeu);

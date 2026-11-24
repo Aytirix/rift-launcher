@@ -12,7 +12,7 @@ const { listerMods, changerMod } = require('./mods');
 const jaquettes = require('./jaquettes');
 const { lancerVerifications, verifierMaintenant, vuePortage } = require('./portages');
 const { creerRapport } = require('./rapport');
-const { installerPortage } = require('./maj-portages');
+const { installerPortage, revenirVersion } = require('./maj-portages');
 
 const texte = (v) => (v === undefined || v === null ? '' : String(v));
 
@@ -250,6 +250,7 @@ function creerApi(etat) {
       }
       return r;
     },
+    recompRollback: (c) => revenirVersion(etat, texte(c.id), texte(c.key), { enregistrer }),
     recompOpen: (c) => {
       const jeu = jeuDe(c);
       const vue = jeu ? vuePortage(etat, jeu) : null;

@@ -312,3 +312,61 @@ test('ETag : une release inchangée est relue du cache (304, appel non compté),
   assert.deepEqual(await lireGitHub(apres, '/repos/a/b/releases/latest'), { tag_name: 'v1.1' });
   assert.deepEqual(vus, [null, '"v1"', '"v1"']);
 });
+
+test('retour en arrière (AppImage) : dans les deux sens, sans réinstallation automatique de la version quittée', {
+  skip: !linux,
+}, async (t) => {
+  const { revenirVersion, anciennesVersions } = require('../src/main/maj-portages');
+  const neuve = Buffer.from('version 1.1');
+  const url = 'https://gh/Jeu-1.1-x86_64.AppImage';
+  const j = jeuInstalle(t, {
+    exe: 'Jeu-1.0-x86_64.AppImage',
+    assets: [{ name: 'Jeu-1.1-x86_64.AppImage', url, size: neuve.length }],
+    contenus: { [url]: neuve },
+  });
+  assert.equal((await installerPortage(j.etat, 'j', { enregistrer: j.enregistrer, arch: 'x64' })).ok, true);
+  const jeu = j.etat.jeux[0];
+  const [v10] = anciennesVersions(j.etat, jeu);
+  assert.equal(v10.version, '1.0');
+  assert.deepEqual(revenirVersion(j.etat, 'j', v10.key, { enregistrer: j.enregistrer }), { ok: true, version: '1.0' });
+  assert.equal(jeu.exePath, j.exePath);
+  assert.equal(fs.readFileSync(jeu.exePath, 'utf8'), 'ancienne version');
+  assert.equal(jeu.skipVersion, 'v1.1');
+  assert.ok(!fs.existsSync(path.join(j.dossierJeu, 'Jeu-1.1-x86_64.AppImage')), 'la 1.1 est rangée, pas laissée à côté');
+  // …et retour à la 1.1, gardée à son tour.
+  const v11 = anciennesVersions(j.etat, jeu).find((v) => v.version === '1.1');
+  assert.equal(revenirVersion(j.etat, 'j', v11.key, { enregistrer: j.enregistrer }).ok, true);
+  assert.equal(fs.readFileSync(jeu.exePath, 'utf8'), 'version 1.1');
+  assert.deepEqual(
+    anciennesVersions(j.etat, jeu).map((v) => v.version),
+    ['1.0'],
+  );
+});
+
+test('retour en arrière (dossier) : anciens fichiers remis, fichiers du joueur intacts, pas de fiche laissée', {
+  skip: !linux,
+}, async (t) => {
+  const { revenirVersion, anciennesVersions } = require('../src/main/maj-portages');
+  const zip = creerZip([
+    { nom: 'MonJeu/MonJeu', donnees: Buffer.from('programme 1.1') },
+    { nom: 'MonJeu/data.pak', donnees: Buffer.from('données 1.1') },
+  ]);
+  const url = 'https://gh/monjeu-linux-x64.zip';
+  const j = jeuInstalle(t, { exe: 'MonJeu', assets: [{ name: 'monjeu-linux-x64.zip', url, size: zip.length }], contenus: { [url]: zip } });
+  fs.writeFileSync(path.join(j.dossierJeu, 'data.pak'), 'données 1.0');
+  assert.equal((await installerPortage(j.etat, 'j', { enregistrer: j.enregistrer, arch: 'x64' })).ok, true);
+  fs.writeFileSync(path.join(j.dossierJeu, 'config.ini'), 'réglé après la mise à jour');
+  j.etat.enCours.set('j', {});
+  assert.match(
+    revenirVersion(j.etat, 'j', anciennesVersions(j.etat, j.etat.jeux[0])[0].key, { enregistrer: j.enregistrer }).error,
+    /Ferme le jeu/,
+  );
+  j.etat.enCours.clear();
+  const r = revenirVersion(j.etat, 'j', anciennesVersions(j.etat, j.etat.jeux[0])[0].key, { enregistrer: j.enregistrer });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(fs.readFileSync(j.exePath, 'utf8'), 'ancienne version');
+  assert.equal(fs.readFileSync(path.join(j.dossierJeu, 'data.pak'), 'utf8'), 'données 1.0');
+  assert.equal(fs.readFileSync(path.join(j.dossierJeu, 'config.ini'), 'utf8'), 'réglé après la mise à jour');
+  assert.ok(!fs.existsSync(path.join(j.dossierJeu, '.rift-version.json')));
+  assert.equal(j.etat.jeux[0].version, '1.0');
+});
