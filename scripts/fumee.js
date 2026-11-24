@@ -93,6 +93,46 @@ async function principal() {
     if (!enAvant.includes('Jeu factice')) throw new Error('le jeu factice n’est pas celui mis en avant');
     if (/\bnull\b/.test(enAvant)) throw new Error('« null » affiché dans le jeu mis en avant');
     if (erreurs.length) throw new Error(`erreurs dans l'interface :\n${erreurs.join('\n')}`);
+    await appli.close();
+
+    // Preuve 3 : le mode « raccourci Steam ». Relancé avec --jouer=<id>, Rift Launcher
+    // n'ouvre AUCUNE fenêtre, lance le jeu, compte son temps et se ferme avec lui.
+    const avant = final.playSeconds;
+    const steam = await electron.launch({
+      args: [...args, `--jouer=${id}`],
+      ...(executable ? { executablePath: executable } : {}),
+      env: { ...process.env, RIFT_DATA_DIR: donnees },
+      timeout: 60000,
+    });
+    let fenetres = 0;
+    steam.on('window', () => fenetres++);
+    const ferme = new Promise((r) => steam.process().once('exit', r));
+    const delai = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('Rift Launcher ne s’est pas fermé après la partie (mode Steam)')), 30000),
+    );
+    await Promise.race([ferme, delai]);
+    if (fenetres) throw new Error(`mode Steam : ${fenetres} fenêtre(s) ouverte(s) au lieu d'aucune`);
+    const relu = JSON.parse(fs.readFileSync(path.join(donnees, 'library.json'), 'utf8')).games.find((g) => g.id === id);
+    if (!(relu.playSeconds >= avant + 1) || relu.sessions !== 2) {
+      throw new Error(`mode Steam : partie non comptée (${relu.playSeconds} s, ${relu.sessions} sessions)`);
+    }
+    console.log(`mode Steam : aucune fenêtre, jeu lancé puis fermé, ${relu.sessions} sessions`);
+
+    // Preuve 4 : un raccourci vers un jeu disparu ne doit pas échouer en silence.
+    const perdu = await electron.launch({
+      args: [...args, '--jouer=jeu-disparu'],
+      ...(executable ? { executablePath: executable } : {}),
+      env: { ...process.env, RIFT_DATA_DIR: donnees },
+      timeout: 60000,
+    });
+    try {
+      await perdu.firstWindow({ timeout: 15000 });
+      console.log('raccourci vers un jeu disparu : la fenêtre s’ouvre pour le dire');
+    } catch {
+      throw new Error('raccourci vers un jeu disparu : aucune fenêtre, l’erreur passe inaperçue');
+    } finally {
+      await perdu.close().catch(() => {});
+    }
     console.log('FUMÉE OK');
   } finally {
     await appli.close().catch(() => {});

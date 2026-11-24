@@ -11,7 +11,7 @@ const { chargerBibliotheque, enregistrerBibliotheque, prefsDe } = require('./bib
 const { ecrireLisezmoi, estFichier, TYPES_MIME } = require('./licences');
 const { chargerReglages } = require('./reglages');
 const { creerApi, fichierRessource } = require('./api');
-const { suivreJeux, ajouterTemps, dernierJeuLance, nomDeFichierSur, outilsDuSysteme } = require('./lancement');
+const { suivreJeux, ajouterTemps, dernierJeuLance, nomDeFichierSur, outilsDuSysteme, demarrerJeu } = require('./lancement');
 const { lancerVerifications } = require('./portages');
 const { majAutomatiques } = require('./maj-portages');
 const { StatutDiscord, ID_DISCORD_INTEGRE } = require('./discord');
@@ -325,10 +325,30 @@ function fonctionsSysteme() {
       discord?.tick();
     },
     surPrefs: () => discord?.tick(),
+    // La commande qui ouvre Rift Launcher, pour les raccourcis Steam.
+    lanceurSteam: () => {
+      if (process.env.APPIMAGE) return { exe: process.env.APPIMAGE, args: '' };
+      if (app.isPackaged) return { exe: process.execPath, args: '' };
+      return { exe: process.execPath, args: `"${app.getAppPath()}"` };
+    },
   };
 }
 
 let arretEnCours = false;
+const jeuDemande = (argv) => argv.find((a) => a.startsWith('--jouer='))?.slice('--jouer='.length) ?? '';
+
+function lancerSansFenetre(id) {
+  etat.journal('INFO', `Lancement demande par un raccourci : ${id}`);
+  demarrerJeu(etat, id, { enregistrer: () => enregistrerBibliotheque(etat) }).then((r) => {
+    if (r.error) {
+      // Sans fenêtre, l'erreur passerait inaperçue : on l'affiche.
+      etat.journal('WARN', `Lancement par raccourci impossible : ${r.error}`);
+      mettreDevant();
+      if (Notification.isSupported()) new Notification({ title: 'Rift Launcher', body: r.error }).show();
+    }
+  });
+}
+
 function quitter() {
   // La boucle de chaque seconde et la fermeture de la fenêtre peuvent arriver ensemble.
   if (arretEnCours) return;
@@ -397,7 +417,11 @@ function demarrer() {
     });
   }
 
-  creerFenetre();
+  // Lancé par un raccourci Steam (--jouer=<id>) : le jeu directement, sans fenêtre ;
+  // Rift Launcher se ferme avec lui, et Steam sait ainsi que la partie est finie.
+  const idJouer = jeuDemande(process.argv);
+  if (idJouer) lancerSansFenetre(idJouer);
+  else creerFenetre();
   lancerVerifications(etat, false, prefsDe(etat));
   verifierMaj();
 
@@ -437,7 +461,13 @@ function demarrer() {
 }
 
 if (app.requestSingleInstanceLock()) {
-  app.on('second-instance', () => etat && mettreDevant());
+  // Une deuxième ouverture (raccourci Steam, menu…) passe par l'instance déjà lancée.
+  app.on('second-instance', (_e, argv) => {
+    if (!etat) return;
+    const id = jeuDemande(argv);
+    if (id) lancerSansFenetre(id);
+    else mettreDevant();
+  });
   // Fenêtre fermée pendant une partie : on reste ouvert pour compter le temps de jeu.
   app.on('window-all-closed', () => {
     if (!etat || etat.enCours.size === 0) quitter();

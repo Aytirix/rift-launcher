@@ -15,6 +15,7 @@ const { lancerVerifications, verifierMaintenant, vuePortage } = require('./porta
 const { creerRapport } = require('./rapport');
 const { installerPortage, revenirVersion } = require('./maj-portages');
 const catalogue = require('./catalogue');
+const { ajouterASteam } = require('./steam');
 
 const texte = (v) => (v === undefined || v === null ? '' : String(v));
 
@@ -284,6 +285,7 @@ function creerApi(etat) {
       }
       return r;
     },
+    steamAdd: (c) => ajouterASteam(etat, texte(c.id), { lanceur: sys.lanceurSteam() }),
     recompRollback: (c) => revenirVersion(etat, texte(c.id), texte(c.key), { enregistrer }),
     recompOpen: (c) => {
       const jeu = jeuDe(c);
