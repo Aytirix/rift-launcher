@@ -37,7 +37,14 @@ jobs:
         if: runner.os == 'Linux'
         run: npm run lint
       - name: Tests
-        run: npm test
+        shell: bash
+        run: |
+          set +e
+          node --test --test-reporter=tap test/*.test.js > tap.txt
+          code=$?
+          cat tap.txt
+          [ $code -ne 0 ] && node scripts/annoter-echecs.js tap.txt
+          exit $code
 
       - name: Fumée (code source)
         if: runner.os == 'Linux'
