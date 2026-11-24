@@ -9,7 +9,8 @@ const { lirePrefs, enregistrerPrefs } = require('./reglages');
 const { vuePortage } = require('./portages');
 const { anciennesVersions } = require('./maj-portages');
 
-const CHAMPS_EDITION = ['name', 'exePath', 'args', 'env', 'saveDir', 'modsDir', 'version', 'repoUrl', 'franchise'];
+// runner : lanceur d'un jeu Windows sous Linux ; emulator : émulateur qui lance ce jeu.
+const CHAMPS_EDITION = ['name', 'exePath', 'args', 'env', 'saveDir', 'modsDir', 'version', 'repoUrl', 'franchise', 'runner', 'emulator'];
 
 const texte = (v) => (v === undefined || v === null ? '' : String(v));
 

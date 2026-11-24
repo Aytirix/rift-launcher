@@ -4,6 +4,7 @@ const { spawn, execFile } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { estFichier } = require('./licences');
+const { lireEmulateurs } = require('./emulateurs');
 
 // Variables d'environnement du jeu : une par ligne, CLE=valeur, # pour commenter.
 function analyserEnv(texte) {
@@ -59,45 +60,124 @@ function decouperArguments(texte) {
   return args;
 }
 
+// Arguments d'un émulateur : {jeu} est remplacé par le fichier du jeu (ROM, .xci…),
+// ajouté à la fin s'il n'apparaît pas. Les arguments propres au jeu suivent.
+function argumentsEmulateurLinux(modele, fichierJeu, argsJeu) {
+  const jetons = decouperArguments(modele);
+  const avecJeu = jetons.some((j) => j.includes('{jeu}'));
+  const liste = jetons.map((j) => j.replaceAll('{jeu}', fichierJeu));
+  if (!avecJeu) liste.push(fichierJeu);
+  return [...liste, ...decouperArguments(argsJeu)];
+}
+
+function argumentsEmulateurWindows(modele, fichierJeu, argsJeu) {
+  let texte = String(modele ?? '').trim();
+  if (texte.includes('{jeu}')) texte = texte.replaceAll('"{jeu}"', `"${fichierJeu}"`).replaceAll('{jeu}', `"${fichierJeu}"`);
+  else texte = `${texte} "${fichierJeu}"`.trim();
+  return [texte, String(argsJeu ?? '').trim()].filter(Boolean).join(' ');
+}
+
+// Lanceurs possibles d'un jeu Windows sous Linux : '' (automatique), 'wine', 'umu'
+// (Proton GE le plus récent, téléchargé par umu-launcher) ou 'proton:<dossier>'
+// (une version de Proton déjà installée, Steam ou GE).
+function lanceurWindowsSousLinux(lanceur, ext, outils) {
+  if (ext !== '.exe') {
+    const wine = outils.trouver(['wine']);
+    return wine ? { fichier: wine, avant: ['cmd', '/c'], env: {} } : { erreur: 'Un .bat ou un .cmd a besoin de Wine : installe-le.' };
+  }
+  if (lanceur === 'wine') {
+    const wine = outils.trouver(['wine']);
+    return wine
+      ? { fichier: wine, avant: [], env: {} }
+      : { erreur: "Wine n'est pas installé : installe-le, ou choisis Proton pour ce jeu." };
+  }
+  if (lanceur === 'umu' || lanceur.startsWith('proton:')) {
+    const umu = outils.trouver(['umu-run']);
+    if (!umu) return { erreur: "Proton se lance avec umu-launcher, qui n'est pas installé : installe-le, ou choisis Wine pour ce jeu." };
+    const env = { GAMEID: 'umu-default' };
+    if (lanceur.startsWith('proton:')) env.PROTONPATH = lanceur.slice('proton:'.length);
+    return { fichier: umu, avant: [], env };
+  }
+  // Automatique : Proton par umu-launcher s'il est là, sinon Wine.
+  const umu = outils.trouver(['umu-run']);
+  if (umu) return { fichier: umu, avant: [], env: { GAMEID: 'umu-default' } };
+  const wine = outils.trouver(['wine']);
+  if (wine) return { fichier: wine, avant: [], env: {} };
+  return {
+    erreur:
+      'Ce jeu est un programme Windows. Installe Wine (ou umu-launcher pour Proton) pour le lancer sous Linux, ou prends la version Linux du portage.',
+  };
+}
+
 // Ce qu'il faut exécuter pour lancer ce fichier, selon le système. Fonction pure :
 // `outils.trouver(noms)` renvoie le premier programme disponible, `outils.executable(p)`
-// dit si le fichier a le droit d'exécution.
-function commandeDeLancement({ exePath, args, plateforme, outils }) {
-  const ext = path.extname(exePath).toLowerCase();
-  const brut = String(args ?? '').trim();
+// dit si le fichier a le droit d'exécution. Avec un émulateur, `exePath` est le fichier
+// du jeu (ROM, .xci…) et c'est l'émulateur qui est lancé.
+function commandeDeLancement({ exePath, args, plateforme, outils, lanceur = '', emulateur = null }) {
+  const programme = emulateur ? emulateur.exePath : exePath;
+  const ext = path.extname(programme).toLowerCase();
   if (plateforme === 'win32') {
     // Les arguments sont passés tels qu'écrits, comme le faisait Start-Process.
+    const brut = emulateur ? argumentsEmulateurWindows(emulateur.args, exePath, args) : String(args ?? '').trim();
     if (ext === '.bat' || ext === '.cmd') {
       return {
         fichier: outils.comspec || 'cmd.exe',
-        arguments: ['/d', '/s', '/c', `""${exePath}"${brut ? ` ${brut}` : ''}"`],
+        arguments: ['/d', '/s', '/c', `""${programme}"${brut ? ` ${brut}` : ''}"`],
         options: { windowsVerbatimArguments: true },
+        env: {},
       };
     }
     return {
-      fichier: exePath,
+      fichier: programme,
       arguments: brut ? [brut] : [],
-      options: { windowsVerbatimArguments: true, argv0: `"${exePath}"` },
+      options: { windowsVerbatimArguments: true, argv0: `"${programme}"` },
+      env: {},
     };
   }
-  const liste = decouperArguments(brut);
+  const liste = emulateur ? argumentsEmulateurLinux(emulateur.args, exePath, args) : decouperArguments(args);
   if (ext === '.exe' || ext === '.bat' || ext === '.cmd') {
-    // Jeu Windows sous Linux : Proton par umu-launcher s'il est là, sinon Wine.
-    const lanceur = ext === '.exe' ? outils.trouver(['umu-run', 'wine']) : outils.trouver(['wine']);
-    if (!lanceur) {
-      return {
-        erreur:
-          'Ce jeu est un programme Windows. Installe Wine (ou umu-launcher pour Proton) pour le lancer sous Linux, ou prends la version Linux du portage.',
-      };
-    }
-    if (ext === '.exe') return { fichier: lanceur, arguments: [exePath, ...liste], options: {} };
-    return { fichier: lanceur, arguments: ['cmd', '/c', exePath, ...liste], options: {} };
+    const l = lanceurWindowsSousLinux(String(lanceur ?? ''), ext, outils);
+    if (l.erreur) return { erreur: l.erreur };
+    return { fichier: l.fichier, arguments: [...l.avant, programme, ...liste], options: {}, env: l.env };
   }
-  if (ext === '.sh' && !outils.executable(exePath)) {
-    return { fichier: outils.trouver(['bash', 'sh']) || 'sh', arguments: [exePath, ...liste], options: {} };
+  if (ext === '.sh' && !outils.executable(programme)) {
+    return { fichier: outils.trouver(['bash', 'sh']) || 'sh', arguments: [programme, ...liste], options: {}, env: {} };
   }
   // Une AppImage téléchargée n'a jamais le droit d'exécution : on le lui donne.
-  return { fichier: exePath, arguments: liste, options: {}, rendreExecutable: !outils.executable(exePath) };
+  return { fichier: programme, arguments: liste, options: {}, env: {}, rendreExecutable: !outils.executable(programme) };
+}
+
+// Versions de Proton installées (Steam, GE-Proton, umu), pour le choix par jeu.
+function protonsInstalles(maison = require('node:os').homedir()) {
+  const racines = [
+    '.steam/steam/compatibilitytools.d',
+    '.steam/root/compatibilitytools.d',
+    '.local/share/Steam/compatibilitytools.d',
+    '.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d',
+    '.steam/steam/steamapps/common',
+    '.local/share/Steam/steamapps/common',
+  ].map((r) => path.join(maison, r));
+  const vus = new Map();
+  for (const racine of racines) {
+    let noms = [];
+    try {
+      noms = fs.readdirSync(racine);
+    } catch {
+      continue;
+    }
+    for (const nom of noms) {
+      const dossier = path.join(racine, nom);
+      if (!estFichier(path.join(dossier, 'proton'))) continue;
+      let reel = dossier;
+      try {
+        reel = fs.realpathSync(dossier);
+      } catch {
+        // lien cassé : on garde le chemin tel quel
+      }
+      if (!vus.has(reel)) vus.set(reel, { nom, dossier });
+    }
+  }
+  return [...vus.values()].sort((a, b) => b.nom.localeCompare(a.nom, undefined, { numeric: true }));
 }
 
 // Sous Linux, le launcher lui-même peut tourner en AppImage : ses variables ne
@@ -162,17 +242,33 @@ async function demarrerJeu(etat, id, { enregistrer, outils = outilsDuSysteme(eta
     etat.journal('WARN', `Lancement impossible, fichier introuvable : ${jeu.name} | "${jeu.exePath}"`);
     return { error: 'Le fichier du jeu est introuvable. Règle son emplacement dans les paramètres du jeu.' };
   }
+  // Jeu lancé par un émulateur déclaré dans les réglages.
+  let emulateur = null;
+  if (jeu.emulator) {
+    emulateur = lireEmulateurs(etat.dossiers.reglages).find((e) => e.id === jeu.emulator) ?? null;
+    if (!emulateur) return { error: "L'émulateur choisi pour ce jeu n'existe plus. Choisis-en un autre dans ses paramètres." };
+    if (!estFichier(emulateur.exePath)) {
+      return { error: `Le programme de l'émulateur ${emulateur.name} est introuvable. Règle-le dans Réglages → Émulateurs.` };
+    }
+  }
   let commande;
   try {
-    commande = commandeDeLancement({ exePath: jeu.exePath, args: jeu.args, plateforme: etat.plateforme, outils });
+    commande = commandeDeLancement({
+      exePath: jeu.exePath,
+      args: jeu.args,
+      plateforme: etat.plateforme,
+      outils,
+      lanceur: jeu.runner,
+      emulateur,
+    });
   } catch (err) {
     return { error: err.message };
   }
   if (commande.erreur) return { error: commande.erreur };
   if (commande.rendreExecutable) {
     try {
-      fs.chmodSync(jeu.exePath, fs.statSync(jeu.exePath).mode | 0o100);
-      etat.journal('INFO', `Droit d'execution donne a ${jeu.exePath}`);
+      fs.chmodSync(commande.fichier, fs.statSync(commande.fichier).mode | 0o100);
+      etat.journal('INFO', `Droit d'execution donne a ${commande.fichier}`);
     } catch (err) {
       return { error: `Le fichier du jeu n'est pas exécutable et je ne peux pas le rendre exécutable : ${err.message}` };
     }
@@ -188,8 +284,8 @@ async function demarrerJeu(etat, id, { enregistrer, outils = outilsDuSysteme(eta
   let proc;
   try {
     proc = lancer(commande.fichier, commande.arguments, {
-      cwd: path.dirname(jeu.exePath),
-      env: environnementDuJeu(process.env, vars, etat.plateforme),
+      cwd: path.dirname(emulateur ? emulateur.exePath : jeu.exePath),
+      env: environnementDuJeu(process.env, { ...commande.env, ...vars }, etat.plateforme),
       detached: etat.plateforme !== 'win32', // groupe de processus à part, pour tout arrêter d'un coup
       stdio: ['ignore', sortie, sortie],
       ...commande.options,
@@ -307,4 +403,5 @@ module.exports = {
   ajouterTemps,
   dernierJeuLance,
   nomDeFichierSur,
+  protonsInstalles,
 };

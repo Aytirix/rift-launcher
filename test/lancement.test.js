@@ -76,7 +76,7 @@ test('Linux : un .exe passe par Proton (umu) avant Wine, et refuse sans aucun de
 test('Linux : une AppImage sans droit d’exécution est rendue exécutable, pas un programme qui l’a déjà', () => {
   const app = '/home/t/eglantine-linux-x86_64.AppImage';
   const c = commandeDeLancement({ exePath: app, args: '-f -g "/j/mk w.xci"', plateforme: 'linux', outils: outils() });
-  assert.deepEqual(c, { fichier: app, arguments: ['-f', '-g', '/j/mk w.xci'], options: {}, rendreExecutable: true });
+  assert.deepEqual(c, { fichier: app, arguments: ['-f', '-g', '/j/mk w.xci'], options: {}, env: {}, rendreExecutable: true });
   assert.equal(commandeDeLancement({ exePath: app, args: '', plateforme: 'linux', outils: outils([], [app]) }).rendreExecutable, false);
 });
 
@@ -135,4 +135,92 @@ test('lancer, compter le temps, arrêter tout le groupe de processus', { skip: p
   assert.ok(etat.lignes.some((l) => l.includes('arrete depuis Rift Launcher')));
   // Plus aucun processus du groupe : le « sleep 30 » enfant est fermé lui aussi.
   assert.throws(() => process.kill(-pid, 0), { code: 'ESRCH' });
+});
+
+test('émulateur sous Linux : {jeu} remplacé par le fichier du jeu, espaces compris', () => {
+  const emulateur = { exePath: '/e/eglantine.AppImage', args: '-f -g "{jeu}"' };
+  const c = commandeDeLancement({
+    exePath: '/j/Mario Kart World.xci',
+    args: '-u 1',
+    plateforme: 'linux',
+    outils: outils([], ['/e/eglantine.AppImage']),
+    emulateur,
+  });
+  assert.equal(c.fichier, '/e/eglantine.AppImage');
+  assert.deepEqual(c.arguments, ['-f', '-g', '/j/Mario Kart World.xci', '-u', '1']);
+  // Sans {jeu} dans le modèle, le fichier du jeu est ajouté à la fin.
+  const sans = commandeDeLancement({
+    exePath: '/j/a b.z64',
+    args: '',
+    plateforme: 'linux',
+    outils: outils([], ['/e/emu']),
+    emulateur: { exePath: '/e/emu', args: '--plein' },
+  });
+  assert.deepEqual(sans.arguments, ['--plein', '/j/a b.z64']);
+});
+
+test('émulateur sous Windows : chemin du jeu entre guillemets, une seule fois', () => {
+  const emulateur = { exePath: 'C:\\E\\eglantine.exe', args: '-f -g "{jeu}"' };
+  const c = commandeDeLancement({ exePath: 'D:\\Jeux\\MK World.xci', args: '', plateforme: 'win32', outils: outils(), emulateur });
+  assert.deepEqual(c.arguments, ['-f -g "D:\\Jeux\\MK World.xci"']);
+  const nu = commandeDeLancement({
+    exePath: 'D:\\a b.xci',
+    args: '-u 1',
+    plateforme: 'win32',
+    outils: outils(),
+    emulateur: { exePath: 'C:\\e.exe', args: '-g {jeu}' },
+  });
+  assert.deepEqual(nu.arguments, ['-g "D:\\a b.xci" -u 1']);
+});
+
+test('lanceur choisi par jeu : Wine, Proton GE (umu) ou une version précise de Proton', () => {
+  const exe = '/j/jeu.exe';
+  const avec = outils(['umu-run', 'wine']);
+  const wine = commandeDeLancement({ exePath: exe, args: '', plateforme: 'linux', outils: avec, lanceur: 'wine' });
+  assert.deepEqual([wine.fichier, wine.env], ['/usr/bin/wine', {}]);
+  const ge = commandeDeLancement({ exePath: exe, args: '', plateforme: 'linux', outils: avec, lanceur: 'umu' });
+  assert.deepEqual([ge.fichier, ge.env], ['/usr/bin/umu-run', { GAMEID: 'umu-default' }]);
+  const precis = commandeDeLancement({ exePath: exe, args: '', plateforme: 'linux', outils: avec, lanceur: 'proton:/h/.steam/Proton 9.0' });
+  assert.deepEqual(precis.env, { GAMEID: 'umu-default', PROTONPATH: '/h/.steam/Proton 9.0' });
+  assert.match(
+    commandeDeLancement({ exePath: exe, args: '', plateforme: 'linux', outils: outils(['wine']), lanceur: 'umu' }).erreur,
+    /umu-launcher/,
+  );
+  assert.match(
+    commandeDeLancement({ exePath: exe, args: '', plateforme: 'linux', outils: outils(['umu-run']), lanceur: 'wine' }).erreur,
+    /Wine n'est pas installé/,
+  );
+});
+
+test('les variables du joueur passent avant celles du lanceur (GAMEID, PROTONPATH)', { skip: process.platform === 'win32' }, async (t) => {
+  const etat = etatDeTest(t, { plateforme: 'linux' });
+  const dossier = dossierTemp(t);
+  const faux = path.join(dossier, 'umu-run');
+  fs.writeFileSync(faux, `#!/bin/sh\necho "$GAMEID|$PROTONPATH|$1" > "${dossier}/vu.txt"\n`, { mode: 0o755 });
+  const exe = path.join(dossier, 'jeu.exe');
+  fs.writeFileSync(exe, 'MZ');
+  etat.jeux.push(nouveauJeu({ id: 'w', name: 'W', exePath: exe, runner: 'proton:/p/GE', env: 'GAMEID=umu-1234' }, false));
+  const r = await demarrerJeu(etat, 'w', { outils: { trouver: (n) => (n.includes('umu-run') ? faux : null), executable: () => true } });
+  assert.deepEqual(r, { ok: true });
+  for (let i = 0; i < 40 && !fs.existsSync(path.join(dossier, 'vu.txt')); i++) await new Promise((res) => setTimeout(res, 50));
+  assert.equal(fs.readFileSync(path.join(dossier, 'vu.txt'), 'utf8').trim(), `umu-1234|/p/GE|${exe}`);
+});
+
+test('un jeu dont l’émulateur a disparu le dit au lieu de lancer autre chose', async (t) => {
+  const { enregistrerEmulateur, supprimerEmulateur } = require('../src/main/emulateurs');
+  const etat = etatDeTest(t);
+  const dossier = dossierTemp(t);
+  const rom = path.join(dossier, 'jeu.xci');
+  fs.writeFileSync(rom, '');
+  const { emulator } = enregistrerEmulateur(etat.dossiers.reglages, {
+    name: 'Eglantine',
+    exePath: path.join(dossier, 'absent.AppImage'),
+    args: '-g "{jeu}"',
+  });
+  etat.jeux.push(nouveauJeu({ id: 'x', name: 'MK World', exePath: rom, emulator: emulator.id }, false));
+  assert.match((await demarrerJeu(etat, 'x')).error, /émulateur Eglantine est introuvable/);
+  assert.match(supprimerEmulateur(etat.dossiers.reglages, emulator.id, etat.jeux).error, /lance encore : MK World/);
+  etat.jeux[0].emulator = 'disparu';
+  assert.match((await demarrerJeu(etat, 'x')).error, /n'existe plus/);
+  assert.deepEqual(supprimerEmulateur(etat.dossiers.reglages, emulator.id, etat.jeux), { ok: true, emulators: [] });
 });

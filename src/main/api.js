@@ -6,7 +6,8 @@ const path = require('node:path');
 const { CHAMPS_EDITION, nouveauJeu, trouverJeu, enregistrerBibliotheque, instantane, prefsDe } = require('./bibliotheque');
 const { LICENCES, resoudreJaquette, resoudreSons, estFichier, estDossier } = require('./licences');
 const { chargerReglages, enregistrerReglages, enregistrerPrefs } = require('./reglages');
-const { demarrerJeu, arreterJeu, nomDeFichierSur } = require('./lancement');
+const { demarrerJeu, arreterJeu, nomDeFichierSur, protonsInstalles, outilsDuSysteme } = require('./lancement');
+const { lireEmulateurs, enregistrerEmulateur, supprimerEmulateur } = require('./emulateurs');
 const { sauvegarder, dossierSauvegardesDu } = require('./sauvegardes');
 const { listerMods, changerMod } = require('./mods');
 const jaquettes = require('./jaquettes');
@@ -249,6 +250,23 @@ function creerApi(etat) {
         return { error: `${r.error} La page de la version s'ouvre pour l'installer à la main.` };
       }
       return r;
+    },
+    emulators: () => ({ emulators: lireEmulateurs(etat.dossiers.reglages) }),
+    emulatorSave: (c) => enregistrerEmulateur(etat.dossiers.reglages, c),
+    emulatorDelete: (c) => supprimerEmulateur(etat.dossiers.reglages, texte(c.id), etat.jeux),
+    // Lanceurs d'un jeu Windows sous Linux (rien à choisir sous Windows).
+    runners: () => {
+      if (etat.plateforme === 'win32') return { available: false, options: [] };
+      const outils = sys.outils?.() ?? outilsDuSysteme(etat.plateforme);
+      const umu = Boolean(outils.trouver(['umu-run']));
+      const wine = Boolean(outils.trouver(['wine']));
+      const options = [
+        { value: '', label: 'Automatique (Proton si umu-launcher est installé, sinon Wine)', ok: umu || wine },
+        { value: 'umu', label: 'Proton GE, dernière version (umu-launcher)', ok: umu },
+        ...(sys.protons?.() ?? protonsInstalles()).map((p) => ({ value: `proton:${p.dossier}`, label: `Proton : ${p.nom}`, ok: umu })),
+        { value: 'wine', label: 'Wine (installé sur le système)', ok: wine },
+      ];
+      return { available: true, umu, wine, options };
     },
     recompRollback: (c) => revenirVersion(etat, texte(c.id), texte(c.key), { enregistrer }),
     recompOpen: (c) => {
