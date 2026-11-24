@@ -8,7 +8,7 @@
 // Les dictionnaires sont dans i18n-dict.js (I18N_DICT).
 
 const I18N_LANGS = [
-  { code: 'auto', name: 'Automatique (langue de Windows)' },
+  { code: 'auto', name: 'Automatique (langue du système)' },
   { code: 'fr', name: 'Français', locale: 'fr-FR' },
   { code: 'en', name: 'English', locale: 'en-US' },
   { code: 'es', name: 'Español', locale: 'es-ES' },

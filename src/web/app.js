@@ -1,12 +1,11 @@
 'use strict';
-i18n.init();   // langue choisie (ou celle de Windows) avant tout affichage
+i18n.init();   // langue choisie (ou celle du système) avant tout affichage
 
-// ---------- Lien avec le script PowerShell (serveur local) ----------
-const TOKEN = new URLSearchParams(location.search).get('t') || '';
+// ---------- Lien avec Rift Launcher (Electron : window.rift, posé par preload.js) ----------
 let offline = false;
 
 function fix(data) {
-  // PowerShell peut renvoyer un objet seul au lieu d'une liste.
+  // Garde-fou repris de la version PowerShell : un objet seul au lieu d'une liste.
   return {
     games: [].concat(data.games || []), running: [].concat(data.running || []),
     version: data.version || '', update: data.update || null, capture: data.capture || null,
@@ -15,12 +14,7 @@ function fix(data) {
 
 async function call(name, body) {
   try {
-    const r = await fetch('/api/' + name, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Token': TOKEN },
-      body: JSON.stringify(body || {}),
-    });
-    const data = await r.json();
+    const data = await window.rift.appeler(name, body || {});
     offline = false;
     return data;
   } catch (e) {
@@ -76,7 +70,6 @@ addEventListener('unhandledrejection', (e) => {
   if (offline) return; // le serveur est arrêté : rien à écrire
   api.log('ERROR', `Promesse rejetée : ${r.message || r}`, r.stack);
 });
-addEventListener('pagehide', () => navigator.sendBeacon('/api/bye?t=' + encodeURIComponent(TOKEN), '{}'));
 
 let state = { games: [], running: [] };
 let editingId = null;
@@ -679,7 +672,8 @@ function renderHero() {
   heroShownId = g.id;
   const bg = h('div', { class: 'hero-bg' });
   if (g.coverUrl) bg.style.backgroundImage = `url("${g.coverUrl}")`;
-  const side = g.coverUrl ? h('div', { class: 'hero-side', style: `background-image:url("${g.coverUrl}")`, 'aria-hidden': 'true' }) : null;
+  // '' et pas null : hero.append() écrirait « null » à l'écran pour un jeu sans jaquette.
+  const side = g.coverUrl ? h('div', { class: 'hero-side', style: `background-image:url("${g.coverUrl}")`, 'aria-hidden': 'true' }) : '';
   const eyebrow = [t(live ? 'En cours' : g.lastPlayed ? 'Reprendre' : 'Sélectionné'), g.franchiseLabel].filter(Boolean).join(' · ');
   const stat = (label, value, title) => h('span', { class: 'stat-chip', title: title || '' }, h('b', {}, value), label ? t(label) : '');
   hero.append(
@@ -829,8 +823,7 @@ async function startUpdate(u) {
   const started = Date.now();
   const timer = setInterval(async () => {
     try {
-      const res = await fetch('/api/version', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Token': TOKEN }, body: '{}' });
-      const v = await res.json();
+      const v = await window.rift.appeler('version', {});
       if (v.version === u.version) { clearInterval(timer); location.reload(); }
     } catch (e) { /* redémarrage en cours */ }
     if (Date.now() - started > 120000) {
@@ -1464,10 +1457,12 @@ const pad = (() => {
   }
 
   // Bouton Home / Xbox / PS : passe du launcher au jeu (et inversement).
-  // Pour les manettes Xbox, c'est Rift Launcher (côté Windows) qui le gère, même pendant le jeu.
+  // Toutes les manettes passent par ici, Xbox comprise : la version Electron n'a pas
+  // encore de lecture XInput côté Windows. Sous Linux, Rift Launcher lit aussi la
+  // manette directement ; il ignore le second appui s'il voit le même deux fois.
   let homeBusy = false;
   function homeToggle() {
-    if (layoutKey === 'xbox' || homeBusy || !prefsState.homeToggle) return;
+    if (homeBusy || !prefsState.homeToggle) return;
     homeBusy = true;
     api.toggleFocus().catch(() => {}).finally(() => setTimeout(() => { homeBusy = false; }, 300));
   }

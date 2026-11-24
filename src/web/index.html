@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://*.steamgriddb.com">
   <title>Rift Launcher</title>
   <link rel="icon" href="logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -85,9 +85,9 @@
         <input name="name" required maxlength="80">
       </label>
 
-      <label>Fichier du jeu (.exe ou .bat)
+      <label>Fichier du jeu (exécutable, AppImage, script ou .exe)
         <span class="row">
-          <input name="exePath" placeholder="C:\…\jeu.exe">
+          <input name="exePath" placeholder="…/jeu.AppImage ou C:\…\jeu.exe">
           <button type="button" class="btn btn-small" data-pick="exePath">Parcourir</button>
         </span>
       </label>
@@ -257,7 +257,7 @@
             <label for="pref-lang">Langue de l'application</label>
             <select id="pref-lang" data-i18n="no"></select>
           </div>
-          <p class="set-small">« Automatique » suit la langue de Windows. Les noms des jeux et des mods ne sont pas traduits.</p>
+          <p class="set-small">« Automatique » suit la langue du système. Les noms des jeux et des mods ne sont pas traduits.</p>
         </section>
 
         <section class="set-panel" data-tab="sons" hidden>
@@ -287,14 +287,14 @@
             <span>Bouton Home : passer du jeu au launcher <small>(rappuie pour revenir au jeu)</small></span>
             <button class="switch" role="switch" id="pref-homeToggle" aria-label="Bouton Home de la manette"><span class="knob"></span></button>
           </div>
-          <p class="set-small">Marche en plein jeu avec les manettes Xbox, PlayStation 4/5 et Switch Pro.
-             Manette Xbox : coupe « Ouvrir la Game Bar avec ce bouton » dans Paramètres Windows → Jeux → Game Bar.</p>
+          <p class="set-small">Sous Linux, marche aussi en plein jeu avec les manettes Xbox, PlayStation 4/5 et Switch Pro.
+             Sous Windows, pour l'instant, seulement quand Rift Launcher est au premier plan.</p>
           <div class="pref-toggle">
             <span>Bouton capture : capture d'écran <small>(Share / Créer, Capture)</small></span>
             <button class="switch" role="switch" id="pref-captureButton" aria-label="Bouton capture de la manette"><span class="knob"></span></button>
           </div>
-          <p class="set-small" data-i18n="html">Captures rangées par jeu dans <b>Images\Rift Launcher</b> (bouton 📷 d'un jeu pour les voir).
-             Sur manette Xbox, le bouton Partager reste à la Game Bar (Vidéos\Captures).</p>
+          <p class="set-small" data-i18n="html">Captures rangées par jeu dans <b>Images/Rift Launcher</b> (bouton 📷 d'un jeu pour les voir).
+             En plein jeu sous Linux : bouton Partager (Xbox Series) ou Capture (Switch Pro).</p>
           <div class="pad-legend" id="pad-legend"></div>
         </section>
 
@@ -353,7 +353,7 @@
 
         <section class="set-panel" data-tab="journal" hidden>
           <p data-i18n="html">Rift Launcher note tout ce qu'il fait dans un journal. En cas de souci, <b>Créer un rapport de bug</b> met un
-             <code>.zip</code> sur ton Bureau à envoyer à TeK_Sama (sans ta clé, tes jeux ni tes sauvegardes).</p>
+             <code>.zip</code> sur ton Bureau à joindre à ton signalement de bug (sans ta clé, tes jeux ni tes sauvegardes).</p>
           <div class="media-btns">
             <button class="btn btn-small btn-primary" id="make-report">Créer un rapport de bug</button>
             <button class="btn btn-small" id="open-logs">Ouvrir les journaux</button>
