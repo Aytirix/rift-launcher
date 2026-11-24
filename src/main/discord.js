@@ -21,7 +21,7 @@ function cheminsDiscord(plateforme, env = process.env) {
     }
     for (const base of [env.XDG_RUNTIME_DIR, env.TMPDIR, env.TMP, env.TEMP, '/tmp']) {
       if (!base) continue;
-      for (const sous of PREFIXES_LINUX) chemins.push(path.join(base, sous, `discord-ipc-${i}`));
+      for (const sous of PREFIXES_LINUX) chemins.push(path.posix.join(base, sous, `discord-ipc-${i}`));
     }
   }
   return [...new Set(chemins)];
