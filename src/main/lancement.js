@@ -157,6 +157,7 @@ async function demarrerJeu(etat, id, { enregistrer, outils = outilsDuSysteme(eta
   const jeu = etat.jeux.find((j) => j.id === id);
   if (!jeu) return { error: 'Jeu introuvable.' };
   if (etat.enCours.has(id)) return { error: 'Ce jeu est déjà lancé.' };
+  if (etat.installations?.has(id)) return { error: 'Ce jeu est en train de se mettre à jour : attends la fin.' };
   if (!estFichier(jeu.exePath)) {
     etat.journal('WARN', `Lancement impossible, fichier introuvable : ${jeu.name} | "${jeu.exePath}"`);
     return { error: 'Le fichier du jeu est introuvable. Règle son emplacement dans les paramètres du jeu.' };

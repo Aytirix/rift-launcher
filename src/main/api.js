@@ -12,6 +12,7 @@ const { listerMods, changerMod } = require('./mods');
 const jaquettes = require('./jaquettes');
 const { lancerVerifications, verifierMaintenant, vuePortage } = require('./portages');
 const { creerRapport } = require('./rapport');
+const { installerPortage } = require('./maj-portages');
 
 const texte = (v) => (v === undefined || v === null ? '' : String(v));
 
@@ -236,6 +237,18 @@ function creerApi(etat) {
       enregistrer();
       etat.journal('INFO', `Portage de ${jeu.name} marque a jour : ${jeu.version}`);
       return { ok: true };
+    },
+    recompInstall: async (c) => {
+      const jeu = jeuDe(c);
+      const r = await installerPortage(etat, texte(c.id), { enregistrer });
+      // Quand l'installation automatique renonce, la page de la version s'ouvre :
+      // le joueur peut la faire à la main.
+      if (r.ouvrirPage) {
+        const vue = jeu ? vuePortage(etat, jeu) : null;
+        if (vue && /^https:\/\/github\.com\//.test(vue.url)) sys.ouvrirLien(vue.url);
+        return { error: `${r.error} La page de la version s'ouvre pour l'installer à la main.` };
+      }
+      return r;
     },
     recompOpen: (c) => {
       const jeu = jeuDe(c);

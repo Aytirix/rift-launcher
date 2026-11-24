@@ -3,14 +3,25 @@
 // est un dépôt GitHub, on lit sa dernière release (ou son dernier tag) et on la
 // compare à la version indiquée pour le jeu.
 const { comparerVersions, depotDe } = require('./versions');
+const { choisirFichier } = require('./maj-portages');
 
 const INTERVALLE_MS = 6 * 3600 * 1000;
+// Après un échec (réseau coupé, limite d'appels GitHub atteinte), on réessaie bien plus
+// tôt : attendre 6 h laisserait le bandeau des nouvelles versions absent tout ce temps.
+const REESSAI_MS = 15 * 60 * 1000;
 
 function vuePortage(etat, jeu) {
   const info = etat.portages.get(jeu.id);
   if (!info || info.repo !== depotDe(jeu.repoUrl)) return null;
   const isNew = Boolean(jeu.version) && comparerVersions(info.latest, jeu.version) > 0;
-  return { latest: info.latest, url: info.url, date: info.date, title: info.title, isNew };
+  const vue = { latest: info.latest, url: info.url, date: info.date, title: info.title, isNew };
+  // Mise à jour automatique possible : un fichier de la release convient à ce jeu.
+  const choix = jeu.exePath ? choisirFichier(info.assets, { plateforme: etat.plateforme, arch: process.arch, exePath: jeu.exePath }) : {};
+  vue.auto = Boolean(choix.fichier);
+  vue.autoFile = choix.fichier ? choix.fichier.name : '';
+  const installation = etat.installations.get(jeu.id);
+  vue.installing = installation ? { step: installation.etape, percent: installation.pourcentage, file: installation.fichier } : null;
+  return vue;
 }
 
 async function lireGitHub(etat, chemin) {
@@ -20,6 +31,9 @@ async function lireGitHub(etat, chemin) {
     signal: AbortSignal.timeout(20000),
   });
   if (reponse.status === 404) return null;
+  if (reponse.status === 403 || reponse.status === 429) {
+    if (reponse.headers.get('x-ratelimit-remaining') === '0') throw new Error("limite d'appels GitHub atteinte (60 par heure sans compte)");
+  }
   if (!reponse.ok) throw new Error(`GitHub a répondu ${reponse.status}`);
   return reponse.json();
 }
@@ -36,6 +50,12 @@ async function verifierPortage(etat, id, repo) {
         url: String(release.html_url ?? ''),
         date: String(release.published_at ?? ''),
         title: String(release.name ?? ''),
+        assets: [].concat(release.assets ?? []).map((a) => ({
+          name: String(a.name ?? ''),
+          size: Number(a.size) || 0,
+          url: String(a.browser_download_url ?? ''),
+          digest: String(a.digest ?? ''),
+        })),
       };
     } else {
       // Pas de release publiée : on regarde les tags.
@@ -45,7 +65,7 @@ async function verifierPortage(etat, id, repo) {
         etat.journal('DEBUG', `Portage ${repo} : aucune version publiee`);
         return;
       }
-      info = { repo, latest: String(premier.name ?? ''), url: `https://github.com/${repo}/tags`, date: '', title: '' };
+      info = { repo, latest: String(premier.name ?? ''), url: `https://github.com/${repo}/tags`, date: '', title: '', assets: [] };
     }
     if (!info.latest) return;
     if (!/^https:\/\/github\.com\//.test(info.url)) info.url = `https://github.com/${repo}/releases`;
@@ -59,7 +79,8 @@ async function verifierPortage(etat, id, repo) {
       etat.journal('DEBUG', `Portage de ${j.name} : derniere version ${info.latest}`);
     }
   } catch (err) {
-    etat.journal('WARN', `Verification du portage ${repo} impossible : ${err.message}`);
+    etat.journal('WARN', `Verification du portage ${repo} impossible : ${err.message}. Nouvel essai dans 15 min.`);
+    etat.prochaineVerifPortages = Math.min(etat.prochaineVerifPortages ?? Number.POSITIVE_INFINITY, Date.now() + REESSAI_MS);
   }
 }
 
@@ -96,4 +117,4 @@ async function verifierMaintenant(etat, prefs) {
   return { ok: true, checked, updates };
 }
 
-module.exports = { vuePortage, lancerVerifications, verifierMaintenant, INTERVALLE_MS };
+module.exports = { vuePortage, lancerVerifications, verifierMaintenant, INTERVALLE_MS, REESSAI_MS };

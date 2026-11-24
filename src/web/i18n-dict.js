@@ -255,7 +255,12 @@ window.I18N_DICT = {
   "À configurer": "Needs setup",
   "À l'instant": "Just now",
   "▶ Écouter": "▶ Listen",
-  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "Report created on your Desktop: send this .zip file."
+  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "Report created on your Desktop: send this .zip file.",
+  "Installation de {file}…": "Installing {file}…",
+  "Téléchargement de {file} : {p} %": "Downloading {file}: {p}%",
+  "Télécharge {file} et l’installe. Ton ancienne version et tes sauvegardes sont gardées.": "Downloads {file} and installs it. Your old version and your saves are kept.",
+  "Mise à jour de {name}… Ne lance pas le jeu pendant ce temps.": "Updating {name}… Don’t start the game in the meantime.",
+  "{name} est à jour : v{v}. L’ancienne version est gardée.": "{name} is up to date: v{v}. The old version is kept."
  },
  "es": {
   "(Share / Créer, Capture)": "(Share / Crear, Capture)",
@@ -510,7 +515,12 @@ window.I18N_DICT = {
   "À configurer": "Por configurar",
   "À l'instant": "Ahora mismo",
   "▶ Écouter": "▶ Escuchar",
-  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "Informe creado en tu escritorio: envía este archivo .zip."
+  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "Informe creado en tu escritorio: envía este archivo .zip.",
+  "Installation de {file}…": "Instalando {file}…",
+  "Téléchargement de {file} : {p} %": "Descargando {file}: {p} %",
+  "Télécharge {file} et l’installe. Ton ancienne version et tes sauvegardes sont gardées.": "Descarga {file} y lo instala. Se conservan tu versión anterior y tus partidas guardadas.",
+  "Mise à jour de {name}… Ne lance pas le jeu pendant ce temps.": "Actualizando {name}… No inicies el juego mientras tanto.",
+  "{name} est à jour : v{v}. L’ancienne version est gardée.": "{name} está actualizado: v{v}. Se conserva la versión anterior."
  },
  "zh": {
   "(Share / Créer, Capture)": "（Share / 创建、Capture 键）",
@@ -765,7 +775,12 @@ window.I18N_DICT = {
   "À configurer": "待设置",
   "À l'instant": "刚刚",
   "▶ Écouter": "▶ 试听",
-  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "报告已生成在桌面：把这个 .zip 文件发过去即可。"
+  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "报告已生成在桌面：把这个 .zip 文件发过去即可。",
+  "Installation de {file}…": "正在安装 {file}…",
+  "Téléchargement de {file} : {p} %": "正在下载 {file}：{p}%",
+  "Télécharge {file} et l’installe. Ton ancienne version et tes sauvegardes sont gardées.": "下载并安装 {file}。旧版本和存档都会保留。",
+  "Mise à jour de {name}… Ne lance pas le jeu pendant ce temps.": "正在更新 {name}… 期间请不要启动游戏。",
+  "{name} est à jour : v{v}. L’ancienne version est gardée.": "{name} 已更新到 v{v}。旧版本已保留。"
  },
  "hi": {
   "(Share / Créer, Capture)": "(Share / Create, Capture)",
@@ -1020,7 +1035,12 @@ window.I18N_DICT = {
   "À configurer": "सेटअप बाकी",
   "À l'instant": "अभी-अभी",
   "▶ Écouter": "▶ सुनें",
-  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "रिपोर्ट आपके डेस्कटॉप पर बन गई: यह .zip फ़ाइल भेजें।"
+  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "रिपोर्ट आपके डेस्कटॉप पर बन गई: यह .zip फ़ाइल भेजें।",
+  "Installation de {file}…": "{file} इंस्टॉल हो रहा है…",
+  "Téléchargement de {file} : {p} %": "{file} डाउनलोड हो रहा है: {p}%",
+  "Télécharge {file} et l’installe. Ton ancienne version et tes sauvegardes sont gardées.": "{file} डाउनलोड करके इंस्टॉल करता है। आपका पुराना संस्करण और सेव सुरक्षित रहते हैं।",
+  "Mise à jour de {name}… Ne lance pas le jeu pendant ce temps.": "{name} अपडेट हो रहा है… इस दौरान गेम शुरू न करें।",
+  "{name} est à jour : v{v}. L’ancienne version est gardée.": "{name} अपडेट हो गया: v{v}। पुराना संस्करण रखा गया है।"
  },
  "ar": {
   "(Share / Créer, Capture)": "(Share / Create، Capture)",
@@ -1275,6 +1295,11 @@ window.I18N_DICT = {
   "À configurer": "يحتاج إلى إعداد",
   "À l'instant": "الآن",
   "▶ Écouter": "▶ استماع",
-  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "تم إنشاء التقرير على سطح المكتب: أرسل ملف ‎.zip هذا."
+  "Rapport créé sur ton Bureau : envoie ce fichier .zip.": "تم إنشاء التقرير على سطح المكتب: أرسل ملف ‎.zip هذا.",
+  "Installation de {file}…": "جارٍ تثبيت {file}…",
+  "Téléchargement de {file} : {p} %": "جارٍ تنزيل {file}: ‏{p}%",
+  "Télécharge {file} et l’installe. Ton ancienne version et tes sauvegardes sont gardées.": "ينزّل {file} ويثبّته. يُحتفَظ بإصدارك القديم وبحفظاتك.",
+  "Mise à jour de {name}… Ne lance pas le jeu pendant ce temps.": "جارٍ تحديث {name}… لا تشغّل اللعبة خلال ذلك.",
+  "{name} est à jour : v{v}. L’ancienne version est gardée.": "{name} محدَّث: v{v}. يُحتفَظ بالإصدار القديم."
  }
 };

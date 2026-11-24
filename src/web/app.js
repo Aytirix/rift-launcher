@@ -54,6 +54,7 @@ const api = {
   recompCheck: () => call('recompCheck'),
   recompDone: (id) => call('recompDone', { id }),
   recompOpen: (id) => call('recompOpen', { id }),
+  recompInstall: (id) => call('recompInstall', { id }),
   toggleFocus: () => call('toggleFocus'),
   fullscreen: (on) => call('fullscreen', { on }),
   capture: () => call('capture'),
@@ -733,13 +734,21 @@ function recompNote(g) {
   if (!r) return null;
   const when = r.date && Date.parse(r.date) ? ' · ' + t('sortie {ago}', { ago: formatAgo(Date.parse(r.date)).toLowerCase() }) : '';
   if (r.isNew) {
+    // Portage Windows/Linux : « Mettre à jour » télécharge et installe tout seul
+    // quand un fichier de la version convient (r.auto). Pendant l'installation,
+    // le bandeau montre où elle en est à la place des boutons.
+    const busy = r.installing;
+    const status = busy && (busy.step === 'installation'
+      ? t('Installation de {file}…', { file: busy.file })
+      : t('Téléchargement de {file} : {p} %', { file: busy.file, p: busy.percent }));
     return h('div', { class: 'recomp-note is-new' },
       h('span', { class: 'recomp-dot', 'aria-hidden': 'true' }),
       h('div', { class: 'recomp-text' },
         h('strong', {}, t('Nouvelle version du portage : {v}', { v: r.latest })),
-        h('span', {}, t('Tu as la v{v}', { v: g.version }) + when)),
-      h('div', { class: 'recomp-btns' },
-        h('button', { class: 'btn btn-small btn-primary', 'data-nav': 'recomp-open', onclick: () => { sfx.select(); api.recompOpen(g.id); } }, 'Voir la mise à jour'),
+        h('span', {}, busy ? status : t('Tu as la v{v}', { v: g.version }) + when)),
+      busy ? null : h('div', { class: 'recomp-btns' },
+        r.auto ? h('button', { class: 'btn btn-small btn-primary', 'data-nav': 'recomp-install', title: t('Télécharge {file} et l’installe. Ton ancienne version et tes sauvegardes sont gardées.', { file: r.autoFile }), onclick: () => installRecomp(g) }, 'Mettre à jour') : null,
+        h('button', { class: 'btn btn-small ' + (r.auto ? 'btn-ghost' : 'btn-primary'), 'data-nav': 'recomp-open', onclick: () => { sfx.select(); api.recompOpen(g.id); } }, 'Voir la mise à jour'),
         h('button', { class: 'btn btn-small btn-ghost', 'data-nav': 'recomp-done', title: t('La version du jeu passe à {v}', { v: r.latest }), onclick: () => markRecompDone(g) }, "C'est fait, je l'ai")));
   }
   if (!g.version) {
@@ -751,6 +760,18 @@ function recompNote(g) {
         h('button', { class: 'btn btn-small btn-ghost', 'data-nav': 'recomp-done', onclick: () => markRecompDone(g) }, "J'ai celle-là")));
   }
   return null;
+}
+
+async function installRecomp(g) {
+  sfx.select();
+  toast(t('Mise à jour de {name}… Ne lance pas le jeu pendant ce temps.', { name: g.name }));
+  const pending = api.recompInstall(g.id);
+  setTimeout(() => refreshLibrary().catch(() => {}), 300);   // affiche la progression tout de suite
+  const r = await pending.catch((e) => ({ error: String(e) }));
+  await refreshLibrary().catch(() => {});
+  if (r.error) { toast(r.error, 'error'); return; }
+  toast(t('{name} est à jour : v{v}. L’ancienne version est gardée.', { name: g.name, v: r.version }));
+  sfx.sparkle();
 }
 
 async function markRecompDone(g) {

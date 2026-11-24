@@ -55,6 +55,7 @@ function creerEtat({ donnees, racineApp, version, plateforme = process.platform,
     enCours: new Map(), // id -> { proc, debut, dernierTick, arretDemande, fini }
     portages: new Map(), // id -> dernière version trouvée sur GitHub
     verifsPortages: new Map(), // id -> vérification en cours (promesse)
+    installations: new Map(), // id -> mise à jour de portage en cours { etape, pourcentage, fichier }
     miseAJour: null,
     capture: null, // { count, last } quand la capture d'écran est disponible
     cacheTempsDeJeu: new Map(),
