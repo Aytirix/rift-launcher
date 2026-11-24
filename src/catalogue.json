@@ -1,0 +1,98 @@
+{
+  "a_propos": "Portages installables depuis Rift Launcher. « programme » : nom du programme dans la release, par système (vérifié sur les releases du 24/11/2026). « page » : le portage ne s'installe pas tout seul sur ce système, sa page s'ouvre avec ce message.",
+  "entrees": [
+    {
+      "id": "zelda64recomp",
+      "name": "Zelda: Majora's Mask (Zelda64Recomp)",
+      "repo": "Zelda64Recomp/Zelda64Recomp",
+      "type": "jeu",
+      "franchise": "zelda",
+      "dossier": "Zelda64Recomp",
+      "description": "Recompilation native de Majora's Mask pour PC.",
+      "besoin": "Ta ROM de Majora's Mask (Nintendo 64, version américaine), demandée au premier lancement.",
+      "programme": { "linux": "Zelda64Recompiled", "win32": "Zelda64Recompiled.exe" }
+    },
+    {
+      "id": "shipwright",
+      "name": "Zelda: Ocarina of Time (Ship of Harkinian)",
+      "repo": "HarbourMasters/Shipwright",
+      "type": "jeu",
+      "franchise": "zelda",
+      "dossier": "Ship of Harkinian",
+      "description": "Portage PC d'Ocarina of Time, avec mods et randomizer.",
+      "besoin": "Ta ROM d'Ocarina of Time (Nintendo 64), demandée au premier lancement.",
+      "programme": { "linux": "soh.appimage", "win32": "soh.exe" }
+    },
+    {
+      "id": "2ship2harkinian",
+      "name": "Zelda: Majora's Mask (2 Ship 2 Harkinian)",
+      "repo": "HarbourMasters/2ship2harkinian",
+      "type": "jeu",
+      "franchise": "zelda",
+      "dossier": "2 Ship 2 Harkinian",
+      "description": "Portage PC de Majora's Mask, par l'équipe de Ship of Harkinian.",
+      "besoin": "Ta ROM de Majora's Mask (Nintendo 64), demandée au premier lancement.",
+      "programme": { "linux": "2ship.appimage", "win32": "2ship.exe" }
+    },
+    {
+      "id": "spaghettikart",
+      "name": "Mario Kart 64 (SpaghettiKart)",
+      "repo": "HarbourMasters/SpaghettiKart",
+      "type": "jeu",
+      "franchise": "mariokart",
+      "dossier": "SpaghettiKart",
+      "description": "Portage PC de Mario Kart 64.",
+      "besoin": "Ta ROM de Mario Kart 64 (Nintendo 64), demandée au premier lancement.",
+      "programme": { "linux": "spaghetti.appimage", "win32": "Spaghettify.exe" }
+    },
+    {
+      "id": "starship",
+      "name": "Star Fox 64 (Starship)",
+      "repo": "HarbourMasters/Starship",
+      "type": "jeu",
+      "franchise": "starfox",
+      "dossier": "Starship",
+      "description": "Portage PC de Star Fox 64.",
+      "besoin": "Ta ROM de Star Fox 64 (Nintendo 64), demandée au premier lancement.",
+      "programme": { "linux": "starship.appimage", "win32": "Starship.exe" }
+    },
+    {
+      "id": "unleashedrecomp",
+      "name": "Sonic Unleashed (Unleashed Recompiled)",
+      "repo": "hedge-dev/UnleashedRecomp",
+      "type": "jeu",
+      "franchise": "sonic",
+      "dossier": "Unleashed Recompiled",
+      "description": "Recompilation PC de la version Xbox 360 de Sonic Unleashed.",
+      "besoin": "Les fichiers de ton jeu Xbox 360 (et de ses DLC), demandés par son assistant au premier lancement.",
+      "programme": { "win32": "UnleashedRecomp.exe" },
+      "page": { "linux": "Sous Linux, ce portage n'est publié qu'en paquet Flatpak : installe-le depuis sa page." }
+    },
+    {
+      "id": "totk-pc-recomp",
+      "name": "Zelda: Tears of the Kingdom (TotK recomp)",
+      "repo": "valentderah/totk-pc-recomp",
+      "type": "jeu",
+      "franchise": "zelda",
+      "dossier": "TotK recomp",
+      "description": "Recompilation PC de Tears of the Kingdom.",
+      "besoin": "Les fichiers de ta cartouche, que son assistant transforme en jeu PC.",
+      "page": {
+        "linux": "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu.",
+        "win32": "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu."
+      }
+    },
+    {
+      "id": "eglantine",
+      "name": "Eglantine (émulateur Switch 2)",
+      "nomCourt": "Eglantine",
+      "repo": "Eglantine-Community/Eglantine",
+      "type": "emulateur",
+      "dossier": "Eglantine",
+      "description": "Émulateur Switch 2 libre, encore expérimental.",
+      "besoin": "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.",
+      "args": "-f -g \"{jeu}\"",
+      "programme": { "linux": "eglantine.AppImage", "win32": "eglantine.exe" }
+    }
+  ]
+}

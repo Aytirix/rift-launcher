@@ -14,6 +14,7 @@ const jaquettes = require('./jaquettes');
 const { lancerVerifications, verifierMaintenant, vuePortage } = require('./portages');
 const { creerRapport } = require('./rapport');
 const { installerPortage, revenirVersion } = require('./maj-portages');
+const catalogue = require('./catalogue');
 
 const texte = (v) => (v === undefined || v === null ? '' : String(v));
 
@@ -267,6 +268,21 @@ function creerApi(etat) {
         { value: 'wine', label: 'Wine (installé sur le système)', ok: wine },
       ];
       return { available: true, umu, wine, options };
+    },
+    catalog: () => ({ folder: catalogue.dossierJeux(etat), entries: catalogue.vueCatalogue(etat) }),
+    catalogFolder: async () => {
+      const dossier = await sys.choisirDossier({ titre: 'Dossier où installer les portages' });
+      if (dossier) catalogue.changerDossierJeux(etat, dossier);
+      return { folder: catalogue.dossierJeux(etat) };
+    },
+    catalogInstall: async (c) => {
+      const r = await catalogue.installerDepuisCatalogue(etat, texte(c.id), { enregistrer });
+      if (r.ouvrirPage) {
+        const entree = catalogue.lireCatalogue(etat).find((e) => e.id === texte(c.id));
+        if (entree) sys.ouvrirLien(`https://github.com/${entree.repo}/releases/latest`);
+        return { error: `${r.error} La page du portage s'ouvre.` };
+      }
+      return r;
     },
     recompRollback: (c) => revenirVersion(etat, texte(c.id), texte(c.key), { enregistrer }),
     recompOpen: (c) => {

@@ -480,6 +480,9 @@ async function majAutomatiques(etat, prefs, { enregistrer, annoncer = () => {}, 
 }
 
 module.exports = {
+  telecharger,
+  extraireTout,
+  deplacer,
   majAutomatiques,
   revenirVersion,
   anciennesVersions,
