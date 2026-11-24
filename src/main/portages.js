@@ -2,6 +2,8 @@
 // Mises à jour des portages (recomps) : pour chaque jeu dont la « page du projet »
 // est un dépôt GitHub, on lit sa dernière release (ou son dernier tag) et on la
 // compare à la version indiquée pour le jeu.
+const fs = require('node:fs');
+const path = require('node:path');
 const { comparerVersions, depotDe } = require('./versions');
 const { choisirFichier } = require('./maj-portages');
 
@@ -24,18 +26,52 @@ function vuePortage(etat, jeu) {
   return vue;
 }
 
+// Cache des réponses GitHub, gardé sur disque : une question déjà posée est reposée
+// avec son ETag (« quoi de neuf depuis ? »). Si rien n'a changé, GitHub répond 304
+// SANS compter l'appel dans la limite de 60 par heure, même après un redémarrage.
+function cacheGitHub(etat) {
+  if (!etat.cacheGitHub) {
+    etat.cacheGitHub = new Map();
+    try {
+      const lu = JSON.parse(fs.readFileSync(path.join(etat.dossiers.donnees, 'cache-github.json'), 'utf8'));
+      for (const [k, v] of Object.entries(lu)) if (v?.etag) etat.cacheGitHub.set(k, v);
+    } catch {
+      // pas encore de cache
+    }
+  }
+  return etat.cacheGitHub;
+}
+
+function enregistrerCache(etat) {
+  try {
+    const fichier = path.join(etat.dossiers.donnees, 'cache-github.json');
+    fs.writeFileSync(`${fichier}.tmp`, JSON.stringify(Object.fromEntries(etat.cacheGitHub)));
+    fs.renameSync(`${fichier}.tmp`, fichier);
+  } catch {
+    // un cache perdu ne coûte que des appels
+  }
+}
+
 async function lireGitHub(etat, chemin) {
   const chercher = etat.systeme.fetch ?? globalThis.fetch;
-  const reponse = await chercher(`https://api.github.com${chemin}`, {
-    headers: { 'User-Agent': `RiftLauncher/${etat.version}`, Accept: 'application/vnd.github+json' },
-    signal: AbortSignal.timeout(20000),
-  });
+  const cache = cacheGitHub(etat);
+  const connu = cache.get(chemin);
+  const headers = { 'User-Agent': `RiftLauncher/${etat.version}`, Accept: 'application/vnd.github+json' };
+  if (connu) headers['If-None-Match'] = connu.etag;
+  const reponse = await chercher(`https://api.github.com${chemin}`, { headers, signal: AbortSignal.timeout(20000) });
+  if (reponse.status === 304 && connu) return connu.corps;
   if (reponse.status === 404) return null;
   if (reponse.status === 403 || reponse.status === 429) {
     if (reponse.headers.get('x-ratelimit-remaining') === '0') throw new Error("limite d'appels GitHub atteinte (60 par heure sans compte)");
   }
   if (!reponse.ok) throw new Error(`GitHub a répondu ${reponse.status}`);
-  return reponse.json();
+  const corps = await reponse.json();
+  const etag = reponse.headers.get('etag');
+  if (etag) {
+    cache.set(chemin, { etag, corps });
+    enregistrerCache(etat);
+  }
+  return corps;
 }
 
 async function verifierPortage(etat, id, repo) {
@@ -117,4 +153,4 @@ async function verifierMaintenant(etat, prefs) {
   return { ok: true, checked, updates };
 }
 
-module.exports = { vuePortage, lancerVerifications, verifierMaintenant, INTERVALLE_MS, REESSAI_MS };
+module.exports = { vuePortage, lancerVerifications, verifierMaintenant, lireGitHub, INTERVALLE_MS, REESSAI_MS };

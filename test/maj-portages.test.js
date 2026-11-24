@@ -294,3 +294,21 @@ test('vérification GitHub en échec : nouvel essai dans 15 min, pas dans 6 h', 
   assert.ok(etat.prochaineVerifPortages < avant + INTERVALLE_MS);
   assert.ok(etat.lignes.some((l) => l.includes("limite d'appels GitHub atteinte")));
 });
+
+test('ETag : une release inchangée est relue du cache (304, appel non compté), même après redémarrage', async (t) => {
+  const { lireGitHub } = require('../src/main/portages');
+  const { creerEtat } = require('../src/main/etat');
+  const vus = [];
+  const github = async (_url, { headers }) => {
+    vus.push(headers['If-None-Match'] ?? null);
+    if (headers['If-None-Match'] === '"v1"') return new Response(null, { status: 304 });
+    return new Response(JSON.stringify({ tag_name: 'v1.1' }), { status: 200, headers: { etag: '"v1"' } });
+  };
+  const etat = require('./aide').etatDeTest(t, { systeme: { fetch: github } });
+  assert.deepEqual(await lireGitHub(etat, '/repos/a/b/releases/latest'), { tag_name: 'v1.1' });
+  assert.deepEqual(await lireGitHub(etat, '/repos/a/b/releases/latest'), { tag_name: 'v1.1' });
+  // « Redémarrage » : nouvel état sur le même dossier de données.
+  const apres = creerEtat({ donnees: etat.dossiers.donnees, racineApp: etat.dossiers.app, version: 't', systeme: { fetch: github } });
+  assert.deepEqual(await lireGitHub(apres, '/repos/a/b/releases/latest'), { tag_name: 'v1.1' });
+  assert.deepEqual(vus, [null, '"v1"', '"v1"']);
+});
