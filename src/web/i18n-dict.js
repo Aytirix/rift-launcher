@@ -318,7 +318,7 @@ window.I18N_DICT = {
   "Les fichiers de ta cartouche, que son assistant transforme en jeu PC.": "Your cartridge files, which its setup turns into a PC game.",
   "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu.": "This port is built from your cartridge files with its own setup tool (“Setup”): follow its page, then add the resulting game.",
   "Émulateur Switch 2 libre, encore expérimental.": "Free Switch 2 emulator, still experimental.",
-  "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.": "Your console’s keys and firmware, then your games (.xci, .nsp) to add as games launched by Eglantine."
+  "Les clés (prod.keys) et le firmware tirés de ta propre Switch 2, puis tes jeux (.xci ou .nsp). Chaque jeu s'ajoute ensuite avec « + Ajouter un jeu » et « Lancé par : Eglantine ».": "The keys (prod.keys) and firmware dumped from your own Switch 2, then your games (.xci or .nsp). Each game is then added with “+ Add a game” and “Launched by: Eglantine”."
  },
  "es": {
   "(Share / Créer, Capture)": "(Share / Crear, Capture)",
@@ -636,7 +636,7 @@ window.I18N_DICT = {
   "Les fichiers de ta cartouche, que son assistant transforme en jeu PC.": "Los archivos de tu cartucho, que su asistente convierte en juego de PC.",
   "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu.": "Este port se construye a partir de los archivos de tu cartucho con su propio asistente («Setup»): sigue su página y luego añade el juego obtenido.",
   "Émulateur Switch 2 libre, encore expérimental.": "Emulador libre de Switch 2, aún experimental.",
-  "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.": "Las claves y el firmware de tu consola, y luego tus juegos (.xci, .nsp) para añadirlos como juegos iniciados con Eglantine."
+  "Les clés (prod.keys) et le firmware tirés de ta propre Switch 2, puis tes jeux (.xci ou .nsp). Chaque jeu s'ajoute ensuite avec « + Ajouter un jeu » et « Lancé par : Eglantine ».": "Las claves (prod.keys) y el firmware extraídos de tu propia Switch 2, y luego tus juegos (.xci o .nsp). Después cada juego se añade con «+ Añadir un juego» e «Iniciado con: Eglantine»."
  },
  "zh": {
   "(Share / Créer, Capture)": "（Share / 创建、Capture 键）",
@@ -954,7 +954,7 @@ window.I18N_DICT = {
   "Les fichiers de ta cartouche, que son assistant transforme en jeu PC.": "你的卡带文件，由其向导转换为 PC 游戏。",
   "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu.": "此移植版需用其自带的向导（“Setup”）根据你的卡带文件构建：请按其页面操作，然后添加生成的游戏。",
   "Émulateur Switch 2 libre, encore expérimental.": "免费开源的 Switch 2 模拟器，仍处于实验阶段。",
-  "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.": "你的主机密钥和固件，然后把你的游戏（.xci、.nsp）添加为由 Eglantine 启动的游戏。"
+  "Les clés (prod.keys) et le firmware tirés de ta propre Switch 2, puis tes jeux (.xci ou .nsp). Chaque jeu s'ajoute ensuite avec « + Ajouter un jeu » et « Lancé par : Eglantine ».": "从你自己的 Switch 2 提取的密钥（prod.keys）和固件，然后是你的游戏（.xci 或 .nsp）。之后每个游戏都用“+ 添加游戏”添加，并选择“启动方式：Eglantine”。"
  },
  "hi": {
   "(Share / Créer, Capture)": "(Share / Create, Capture)",
@@ -1272,7 +1272,7 @@ window.I18N_DICT = {
   "Les fichiers de ta cartouche, que son assistant transforme en jeu PC.": "आपके कार्ट्रिज की फ़ाइलें, जिन्हें उसका सहायक PC गेम में बदलता है।",
   "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu.": "यह पोर्ट आपके कार्ट्रिज की फ़ाइलों से उसके अपने सहायक (“Setup”) से बनता है: उसका पेज देखें, फिर बना हुआ गेम जोड़ें।",
   "Émulateur Switch 2 libre, encore expérimental.": "मुफ़्त Switch 2 एमुलेटर, अभी प्रायोगिक।",
-  "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.": "आपके कंसोल की कुंजियाँ और फ़र्मवेयर, फिर आपके गेम (.xci, .nsp) जिन्हें Eglantine से चलने वाले गेम के रूप में जोड़ें।"
+  "Les clés (prod.keys) et le firmware tirés de ta propre Switch 2, puis tes jeux (.xci ou .nsp). Chaque jeu s'ajoute ensuite avec « + Ajouter un jeu » et « Lancé par : Eglantine ».": "आपके अपने Switch 2 से निकाली गई कुंजियाँ (prod.keys) और फ़र्मवेयर, फिर आपके गेम (.xci या .nsp)। इसके बाद हर गेम “+ गेम जोड़ें” से जोड़ें और “इससे चलाएँ: Eglantine” चुनें।"
  },
  "ar": {
   "(Share / Créer, Capture)": "(Share / Create، Capture)",
@@ -1590,6 +1590,6 @@ window.I18N_DICT = {
   "Les fichiers de ta cartouche, que son assistant transforme en jeu PC.": "ملفات خرطوشتك، التي يحوّلها مساعدها إلى لعبة حاسوب.",
   "Ce portage se construit à partir des fichiers de ta cartouche avec son propre assistant (« Setup ») : suis sa page, puis ajoute le jeu obtenu.": "يُبنى هذا المنفذ من ملفات خرطوشتك بمساعده الخاص («Setup»): اتبع صفحته ثم أضف اللعبة الناتجة.",
   "Émulateur Switch 2 libre, encore expérimental.": "محاكي Switch 2 حر، لا يزال تجريبيًا.",
-  "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.": "مفاتيح جهازك وبرنامجه الثابت، ثم ألعابك (.xci و.nsp) لتضيفها كألعاب يشغّلها Eglantine."
+  "Les clés (prod.keys) et le firmware tirés de ta propre Switch 2, puis tes jeux (.xci ou .nsp). Chaque jeu s'ajoute ensuite avec « + Ajouter un jeu » et « Lancé par : Eglantine ».": "المفاتيح (prod.keys) والبرنامج الثابت المستخرجة من جهاز Switch 2 الخاص بك، ثم ألعابك (.xci أو .nsp). تُضاف كل لعبة بعد ذلك عبر «+ إضافة لعبة» مع «يُشغَّل بواسطة: Eglantine»."
  }
 };

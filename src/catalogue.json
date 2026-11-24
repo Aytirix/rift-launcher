@@ -90,7 +90,7 @@
       "type": "emulateur",
       "dossier": "Eglantine",
       "description": "Émulateur Switch 2 libre, encore expérimental.",
-      "besoin": "Les clés et le firmware de ta console, puis tes jeux (.xci, .nsp) à ajouter comme jeux lancés par Eglantine.",
+      "besoin": "Les clés (prod.keys) et le firmware tirés de ta propre Switch 2, puis tes jeux (.xci ou .nsp). Chaque jeu s'ajoute ensuite avec « + Ajouter un jeu » et « Lancé par : Eglantine ».",
       "args": "-f -g \"{jeu}\"",
       "programme": { "linux": "eglantine.AppImage", "win32": "eglantine.exe" }
     }
