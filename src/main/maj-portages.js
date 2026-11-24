@@ -15,6 +15,7 @@ const zlib = require('node:zlib');
 const { estFichier, estDossier } = require('./licences');
 const { nomDeFichierSur } = require('./lancement');
 const { sauvegarder } = require('./sauvegardes');
+const { comparerVersions } = require('./versions');
 
 const VERSIONS_GARDEES = 2;
 // Dans chaque ancienne version : comment la remettre (type, programme, version).
@@ -451,7 +452,35 @@ function revenirVersion(etat, id, cle, { enregistrer }) {
   }
 }
 
+// Réglage « Installer seul les nouvelles versions » : pour chaque portage en retard,
+// jeu fermé, version pas refusée par un retour en arrière, et pas déjà ratée (un
+// échec n'est pas retenté en boucle : il attend la version suivante ou un clic).
+async function majAutomatiques(etat, prefs, { enregistrer, annoncer = () => {}, arch }) {
+  if (!prefs.recompAuto || !prefs.recompCheck) return [];
+  etat.echecsAuto ??= new Set();
+  const faites = [];
+  for (const jeu of [...etat.jeux]) {
+    const info = etat.portages.get(jeu.id);
+    if (!info?.latest || !jeu.version || comparerVersions(info.latest, jeu.version) <= 0) continue;
+    if (jeu.skipVersion && comparerVersions(jeu.skipVersion, info.latest) === 0) continue;
+    const essai = `${jeu.id}@${info.latest}`;
+    if (etat.echecsAuto.has(essai) || etat.enCours.has(jeu.id) || etat.installations.has(jeu.id)) continue;
+    etat.journal('INFO', `Mise a jour automatique : ${jeu.name} -> ${info.latest}`);
+    const r = await installerPortage(etat, jeu.id, { enregistrer, arch });
+    if (r.ok) {
+      faites.push({ id: jeu.id, name: jeu.name, version: r.version });
+      etat.majAuto = { count: (etat.majAuto?.count ?? 0) + 1, last: { name: jeu.name, version: r.version } };
+      annoncer(jeu, r.version);
+    } else {
+      etat.echecsAuto.add(essai);
+      etat.journal('WARN', `Mise a jour automatique de ${jeu.name} abandonnee : ${r.error}`);
+    }
+  }
+  return faites;
+}
+
 module.exports = {
+  majAutomatiques,
   revenirVersion,
   anciennesVersions,
   choisirFichier,

@@ -11,6 +11,7 @@ const PREFS_PAR_DEFAUT = Object.freeze({
   debugLog: false,
   discord: true,
   recompCheck: true,
+  recompAuto: false, // installer seul les nouvelles versions des portages
   homeToggle: true,
   captureButton: true,
   lang: 'auto',
@@ -53,7 +54,7 @@ function enregistrerPrefs(fichier, entrantes) {
     const n = Number(e[k]);
     if (Number.isFinite(n)) prefs[k] = Math.round(Math.max(0, Math.min(100, n)));
   }
-  for (const k of ['hoverSounds', 'intro', 'debugLog', 'discord', 'recompCheck', 'homeToggle', 'captureButton']) {
+  for (const k of ['hoverSounds', 'intro', 'debugLog', 'discord', 'recompCheck', 'recompAuto', 'homeToggle', 'captureButton']) {
     if (e[k] !== undefined && e[k] !== null) prefs[k] = Boolean(e[k]);
   }
   if (LANGUES.includes(e.lang)) prefs.lang = e.lang;

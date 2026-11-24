@@ -5,7 +5,7 @@
 const { execFile } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, protocol, screen, shell } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Notification, protocol, screen, shell } = require('electron');
 const { creerEtat, dossierDonneesParDefaut } = require('./etat');
 const { chargerBibliotheque, enregistrerBibliotheque, prefsDe } = require('./bibliotheque');
 const { ecrireLisezmoi, estFichier, TYPES_MIME } = require('./licences');
@@ -13,6 +13,7 @@ const { chargerReglages } = require('./reglages');
 const { creerApi, fichierRessource } = require('./api');
 const { suivreJeux, ajouterTemps, dernierJeuLance, nomDeFichierSur, outilsDuSysteme } = require('./lancement');
 const { lancerVerifications } = require('./portages');
+const { majAutomatiques } = require('./maj-portages');
 const { StatutDiscord, ID_DISCORD_INTEGRE } = require('./discord');
 const { horodatage } = require('./sauvegardes');
 const { comparerVersions } = require('./versions');
@@ -400,8 +401,34 @@ function demarrer() {
   lancerVerifications(etat, false, prefsDe(etat));
   verifierMaj();
 
+  // Mises à jour automatiques des portages (si activées) : au plus une passe par minute.
+  let majAutoEnCours = false;
+  let derniereMajAuto = 0;
+  const passeMajAuto = () => {
+    if (majAutoEnCours || Date.now() - derniereMajAuto < 60000) return;
+    derniereMajAuto = Date.now();
+    majAutoEnCours = true;
+    majAutomatiques(etat, prefsDe(etat), {
+      enregistrer: () => enregistrerBibliotheque(etat),
+      annoncer: (jeu, version) => {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'Rift Launcher',
+            body: `${jeu.name} est à jour : v${version}`,
+            icon: path.join(RACINE, 'icone.png'),
+          }).show();
+        }
+      },
+    })
+      .catch((err) => journal.erreur('Mises a jour automatiques', err))
+      .finally(() => {
+        majAutoEnCours = false;
+      });
+  };
+
   setInterval(() => {
     suivreJeux(etat, () => enregistrerBibliotheque(etat));
+    passeMajAuto();
     discord.tick();
     if (Date.now() > (etat.prochaineVerifPortages ?? 0)) lancerVerifications(etat, true, prefsDe(etat));
     // Fenêtre fermée et plus aucun jeu en cours : on s'arrête.

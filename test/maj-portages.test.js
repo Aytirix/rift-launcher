@@ -370,3 +370,47 @@ test('retour en arrière (dossier) : anciens fichiers remis, fichiers du joueur 
   assert.ok(!fs.existsSync(path.join(j.dossierJeu, '.rift-version.json')));
   assert.equal(j.etat.jeux[0].version, '1.0');
 });
+
+test('mise à jour automatique : seulement si activée, jeu fermé, version non refusée, échec non retenté', { skip: !linux }, async (t) => {
+  const { majAutomatiques } = require('../src/main/maj-portages');
+  const neuve = Buffer.from('1.1');
+  const url = 'https://gh/Jeu-1.1-x86_64.AppImage';
+  const j = jeuInstalle(t, {
+    exe: 'Jeu-1.0-x86_64.AppImage',
+    assets: [{ name: 'Jeu-1.1-x86_64.AppImage', url, size: neuve.length }],
+    contenus: { [url]: neuve },
+  });
+  const annonces = [];
+  const opts = { enregistrer: j.enregistrer, annoncer: (jeu, v) => annonces.push(`${jeu.name} ${v}`), arch: 'x64' };
+  assert.deepEqual(await majAutomatiques(j.etat, { recompCheck: true, recompAuto: false }, opts), [], 'désactivée par défaut');
+  j.etat.enCours.set('j', {});
+  assert.deepEqual(await majAutomatiques(j.etat, { recompCheck: true, recompAuto: true }, opts), [], 'pas pendant la partie');
+  j.etat.enCours.clear();
+  j.etat.jeux[0].skipVersion = 'v1.1';
+  assert.deepEqual(
+    await majAutomatiques(j.etat, { recompCheck: true, recompAuto: true }, opts),
+    [],
+    'version refusée par un retour en arrière',
+  );
+  j.etat.jeux[0].skipVersion = '';
+  const faites = await majAutomatiques(j.etat, { recompCheck: true, recompAuto: true }, opts);
+  assert.deepEqual(faites, [{ id: 'j', name: 'Mon Jeu', version: '1.1' }]);
+  assert.deepEqual(annonces, ['Mon Jeu 1.1']);
+  assert.deepEqual(j.etat.majAuto, { count: 1, last: { name: 'Mon Jeu', version: '1.1' } });
+  assert.deepEqual(await majAutomatiques(j.etat, { recompCheck: true, recompAuto: true }, opts), [], 'à jour : rien à faire');
+});
+
+test('mise à jour automatique ratée : pas retentée en boucle', { skip: !linux }, async (t) => {
+  const { majAutomatiques } = require('../src/main/maj-portages');
+  const j = jeuInstalle(t, {
+    exe: 'Jeu-1.0-x86_64.AppImage',
+    assets: [{ name: 'Jeu-1.1-x86_64.AppImage', url: 'https://gh/absent', size: 3 }],
+    contenus: {},
+  });
+  const prefs = { recompCheck: true, recompAuto: true };
+  await majAutomatiques(j.etat, prefs, { enregistrer: j.enregistrer, arch: 'x64' });
+  const appels = j.gh.appels.length;
+  await majAutomatiques(j.etat, prefs, { enregistrer: j.enregistrer, arch: 'x64' });
+  assert.equal(j.gh.appels.length, appels, 'aucun nouveau téléchargement');
+  assert.equal(fs.readFileSync(j.exePath, 'utf8'), 'ancienne version');
+});

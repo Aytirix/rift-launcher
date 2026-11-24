@@ -186,6 +186,7 @@ function instantane(etat) {
     version: etat.version,
     update: etat.miseAJour,
     capture: etat.capture,
+    autoUpdates: etat.majAuto ?? null,
   };
 }
 
