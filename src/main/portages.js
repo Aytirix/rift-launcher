@@ -1,0 +1,99 @@
+'use strict';
+// Mises à jour des portages (recomps) : pour chaque jeu dont la « page du projet »
+// est un dépôt GitHub, on lit sa dernière release (ou son dernier tag) et on la
+// compare à la version indiquée pour le jeu.
+const { comparerVersions, depotDe } = require('./versions');
+
+const INTERVALLE_MS = 6 * 3600 * 1000;
+
+function vuePortage(etat, jeu) {
+  const info = etat.portages.get(jeu.id);
+  if (!info || info.repo !== depotDe(jeu.repoUrl)) return null;
+  const isNew = Boolean(jeu.version) && comparerVersions(info.latest, jeu.version) > 0;
+  return { latest: info.latest, url: info.url, date: info.date, title: info.title, isNew };
+}
+
+async function lireGitHub(etat, chemin) {
+  const chercher = etat.systeme.fetch ?? globalThis.fetch;
+  const reponse = await chercher(`https://api.github.com${chemin}`, {
+    headers: { 'User-Agent': `RiftLauncher/${etat.version}`, Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (reponse.status === 404) return null;
+  if (!reponse.ok) throw new Error(`GitHub a répondu ${reponse.status}`);
+  return reponse.json();
+}
+
+async function verifierPortage(etat, id, repo) {
+  const jeu = () => etat.jeux.find((j) => j.id === id);
+  try {
+    let info = null;
+    const release = await lireGitHub(etat, `/repos/${repo}/releases/latest`);
+    if (release) {
+      info = {
+        repo,
+        latest: String(release.tag_name ?? ''),
+        url: String(release.html_url ?? ''),
+        date: String(release.published_at ?? ''),
+        title: String(release.name ?? ''),
+      };
+    } else {
+      // Pas de release publiée : on regarde les tags.
+      const tags = await lireGitHub(etat, `/repos/${repo}/tags?per_page=1`);
+      const premier = Array.isArray(tags) ? tags[0] : null;
+      if (!premier) {
+        etat.journal('DEBUG', `Portage ${repo} : aucune version publiee`);
+        return;
+      }
+      info = { repo, latest: String(premier.name ?? ''), url: `https://github.com/${repo}/tags`, date: '', title: '' };
+    }
+    if (!info.latest) return;
+    if (!/^https:\/\/github\.com\//.test(info.url)) info.url = `https://github.com/${repo}/releases`;
+    const j = jeu();
+    if (!j) return;
+    etat.portages.set(id, info);
+    const vue = vuePortage(etat, j);
+    if (vue?.isNew) {
+      etat.journal('INFO', `Nouvelle version du portage de ${j.name} : ${info.latest} (installee : ${j.version})`);
+    } else {
+      etat.journal('DEBUG', `Portage de ${j.name} : derniere version ${info.latest}`);
+    }
+  } catch (err) {
+    etat.journal('WARN', `Verification du portage ${repo} impossible : ${err.message}`);
+  }
+}
+
+function lancerVerifications(etat, forcer, prefs) {
+  etat.prochaineVerifPortages = Date.now() + INTERVALLE_MS;
+  if (!prefs.recompCheck) return [];
+  const lancees = [];
+  for (const jeu of etat.jeux) {
+    const repo = depotDe(jeu.repoUrl);
+    if (!repo) {
+      etat.portages.delete(jeu.id);
+      continue;
+    }
+    const connu = etat.portages.get(jeu.id);
+    if (!forcer && connu && connu.repo === repo) continue;
+    if (etat.verifsPortages.has(jeu.id)) {
+      lancees.push(etat.verifsPortages.get(jeu.id));
+      continue;
+    }
+    const promesse = verifierPortage(etat, jeu.id, repo).finally(() => etat.verifsPortages.delete(jeu.id));
+    etat.verifsPortages.set(jeu.id, promesse);
+    lancees.push(promesse);
+  }
+  return lancees;
+}
+
+// Vérification immédiate (bouton des réglages) : attend les réponses 10 s maximum.
+async function verifierMaintenant(etat, prefs) {
+  etat.portages.clear();
+  const lancees = lancerVerifications(etat, true, prefs);
+  await Promise.race([Promise.allSettled(lancees), new Promise((r) => setTimeout(r, 10000))]);
+  const updates = etat.jeux.filter((j) => vuePortage(etat, j)?.isNew).map((j) => j.name);
+  const checked = etat.jeux.filter((j) => depotDe(j.repoUrl)).length;
+  return { ok: true, checked, updates };
+}
+
+module.exports = { vuePortage, lancerVerifications, verifierMaintenant, INTERVALLE_MS };

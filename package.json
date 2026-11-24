@@ -1,0 +1,92 @@
+{
+  "name": "rift-launcher",
+  "productName": "Rift Launcher",
+  "version": "2.0.0",
+  "description": "Lanceur de jeux recomp (portages PC natifs) pour Windows et Linux",
+  "author": "Aytirix (portage Electron), d'après TeK_Sama",
+  "license": "MIT",
+  "homepage": "https://github.com/Aytirix/rift-launcher",
+  "repository": "github:Aytirix/rift-launcher",
+  "main": "src/main/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "lint": "biome check --error-on-warnings src/main src/preload.js test scripts",
+    "format": "biome check --write src/main src/preload.js test scripts",
+    "fumee": "node scripts/fumee.js",
+    "dist:linux": "electron-builder --linux AppImage deb",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.6",
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
+    "playwright-core": "1.62.1"
+  },
+  "build": {
+    "appId": "io.github.aytirix.riftlauncher",
+    "productName": "Rift Launcher",
+    "copyright": "MIT — TeK_Sama (Rift Launcher), Aytirix (portage Windows/Linux)",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "LICENSE",
+      "!src/web/covers/*.{webp,jpg,png}"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Aytirix",
+        "repo": "rift-launcher",
+        "releaseType": "draft"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "RiftLauncherSetup-${version}.${ext}",
+      "shortcutName": "Rift Launcher"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "executableName": "rift-launcher",
+      "artifactName": "RiftLauncher-${version}-${arch}.${ext}",
+      "synopsis": "Lanceur de jeux recomp",
+      "maintainer": "Aytirix <Aytirix@users.noreply.github.com>",
+      "syncDesktopName": true
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
+      ]
+    }
+  },
+  "desktopName": "rift-launcher.desktop"
+}
