@@ -1,0 +1,79 @@
+name: Vérifications
+
+# Rejouées à chaque push, et par la publication avant de construire quoi que ce soit.
+# Chaque système teste son propre paquet : l'installeur Windows n'est construit et
+# lancé que sur Windows, l'AppImage et le .deb que sur Linux.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      publier:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    name: ${{ matrix.systeme }}
+    strategy:
+      fail-fast: false
+      matrix:
+        systeme: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.systeme }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        if: runner.os == 'Linux'
+        run: npm run lint
+      - name: Tests
+        run: npm test
+
+      - name: Fumée (code source)
+        if: runner.os == 'Linux'
+        run: node scripts/fumee.js --headless
+      - name: Fumée (code source)
+        if: runner.os == 'Windows'
+        run: node scripts/fumee.js
+
+      - name: Paquets Linux
+        if: runner.os == 'Linux'
+        run: npx electron-builder --linux AppImage deb --publish ${{ inputs.publier && 'always' || 'never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Installeur Windows
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win nsis --publish ${{ inputs.publier && 'always' || 'never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Le paquet construit doit s'ouvrir et lancer un jeu, pas seulement le code source.
+      - name: Fumée (AppImage construite)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libfuse2
+          node scripts/fumee.js --headless --executable "$(ls dist/*.AppImage)"
+      - name: Fumée (application Windows construite)
+        if: runner.os == 'Windows'
+        run: node scripts/fumee.js --executable "dist/win-unpacked/Rift Launcher.exe"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rift-launcher-${{ runner.os }}
+          if-no-files-found: ignore
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.exe
+            dist/fumee.png

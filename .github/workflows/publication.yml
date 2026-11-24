@@ -1,0 +1,53 @@
+name: Publication
+
+# Déclenchée par un tag de version : `git tag v2.0.1 && git push origin v2.0.1`.
+# Les vérifications complètes sont rejouées ; les paquets ne sont publiés que si
+# elles passent sur les deux systèmes. Un tag posé sur un commit cassé ne donne
+# donc pas de version cassée à installer.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publication-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preparer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Le tag doit dire la même version que package.json : sinon la mise à jour
+      # automatique annoncerait une version et en installerait une autre.
+      - name: Tag et version identiques
+        run: |
+          VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Le tag $GITHUB_REF_NAME ne correspond pas à package.json ($VERSION)."
+            exit 1
+          fi
+      # La release est créée une seule fois ici, EN BROUILLON : les deux systèmes y
+      # déposent leurs fichiers, et personne ne la voit (ni la mise à jour automatique)
+      # tant que les deux n'ont pas réussi.
+      - name: Créer la release (brouillon)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --title "Rift Launcher ${GITHUB_REF_NAME#v}" --generate-notes --repo "$GITHUB_REPOSITORY"
+
+  publier:
+    needs: preparer
+    uses: ./.github/workflows/verifications.yml
+    with:
+      publier: true
+
+  finaliser:
+    needs: publier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rendre la release publique
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest --repo "$GITHUB_REPOSITORY"
